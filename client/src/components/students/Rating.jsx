@@ -1,19 +1,36 @@
 import React, { useEffect, useState } from 'react'
 
-const Rating = ({initialRating, onRate}) => {
+const Rating = ({initialRating, onRate, courseId}) => {
 
   const [rating, setRating] = useState(initialRating || 0)
 
-  const handleRating = (value) =>{
-    setRating(value);
-    if(onRate) onRate(value)
-  }
-
-  useEffect(()=>{
-    if(initialRating){
+  // Load rating from localStorage on mount
+  useEffect(() => {
+    if (courseId) {
+      const savedRating = localStorage.getItem(`rating_${courseId}`)
+      if (savedRating) {
+        setRating(Number(savedRating))
+      } else if (initialRating) {
+        setRating(initialRating)
+      }
+    } else if (initialRating) {
       setRating(initialRating)
     }
-  }, [initialRating]);
+  }, [initialRating, courseId])
+
+  const handleRating = (value) => {
+    setRating(value)
+    
+    // Save to localStorage if courseId is provided
+    if (courseId) {
+      localStorage.setItem(`rating_${courseId}`, value.toString())
+    }
+    
+    // Call parent callback if provided
+    if (onRate) {
+      onRate(value)
+    }
+  }
 
   return (
     <div>

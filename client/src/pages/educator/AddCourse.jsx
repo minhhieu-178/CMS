@@ -1,12 +1,23 @@
-import React, { useEffect, useRef, useState } from 'react'
-import uniqid from 'uniqid';
+import React, { useContext, useEffect, useRef, useState } from 'react'
 import Quill from 'quill';
 import { assets } from '../../assets/assets';
+import { AppContext } from '../../context/AppContext';
+import { useAuth, useUser } from '@clerk/clerk-react';
+import { addCourse } from '../../utils/api';
+import { toast } from 'react-toastify';
+
+// Simple unique ID generator for browser
+const generateId = () => {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2);
+};
 
 const AddCourse = () => {
 
   const quillRef = useRef(null);
   const editorRef = useRef(null);
+  const { navigate } = useContext(AppContext);
+  const { getToken } = useAuth();
+  const { user } = useUser();
 
   const [courseTitle, setCourseTitle] = useState('')
   const [coursePrice, setCoursePrice] = useState(0)
@@ -15,6 +26,7 @@ const AddCourse = () => {
   const [chapters, setChapters] = useState([]);
   const [showPopup, setShowPopup] = useState(false);
   const [currentChapterId, setCurrentChapterId] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [lectureDetails, setLectureDetails] = useState(
     {
@@ -30,7 +42,7 @@ const AddCourse = () => {
       const title = prompt('Enter Chapter Name:');
       if(title) {
         const newChapter = {
-          chapterId: uniqid(),
+          chapterId: generateId(),
           chapterTitle: title,
           chapterContent: [],
           collapsed: false,
@@ -75,7 +87,7 @@ const AddCourse = () => {
             ...lectureDetails,
             lectureOrder: chapter.chapterContent.length > 0 ? chapter.
             chapterContent.slice(-1)[0].lectureOrder + 1 : 1,
-            lectureId: uniqid()
+            lectureId: generateId()
           };
           chapter.chapterContent.push(newLecture);
         }
@@ -93,6 +105,139 @@ const AddCourse = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    console.log('=== Starting course submission ===')
+    
+    // Validation
+    if (!courseTitle.trim()) {
+      toast.error('Please enter course title')
+      return
+    }
+    
+    if (!quillRef.current) {
+      toast.error('Please enter course description')
+      return
+    }
+    
+    const courseDescription = quillRef.current.root.innerHTML
+    if (!courseDescription || courseDescription === '<p><br></p>') {
+      toast.error('Please enter course description')
+      return
+    }
+    
+    if (!coursePrice || coursePrice <= 0) {
+      toast.error('Please enter valid course price')
+      return
+    }
+    
+    if (!image) {
+      toast.error('Please upload course thumbnail')
+      return
+    }
+    
+    if (chapters.length === 0) {
+      toast.error('Please add at least one chapter')
+      return
+    }
+    
+    // Check if all chapters have lectures
+    const emptyChapters = chapters.filter(ch => ch.chapterContent.length === 0)
+    if (emptyChapters.length > 0) {
+      toast.error('All chapters must have at least one lecture')
+      return
+    }
+    
+    console.log('=== Validation passed ===')
+    
+    try {
+      setIsSubmitting(true)
+      toast.info('Uploading course to server...')
+      
+      const token = await getToken()
+      console.log('Token:', token ? 'Got token' : 'No token')
+      
+      if (!token) {
+        toast.error('Please sign in to continue')
+        return
+      }
+      
+      // Prepare course data
+      const courseData = {
+        courseTitle,
+        courseDescription,
+        coursePrice: Number(coursePrice),
+        discount: Number(discount),
+        courseContent: chapters,
+        isPublished: true
+      }
+      
+      console.log('Course data:', courseData)
+      console.log('Image file:', image)
+      
+      // Call API to upload to MongoDB + Cloudinary
+      const result = await addCourse(token, courseData, image)
+      
+      console.log('API result:', result)
+      console.log('API result success:', result.success)
+      console.log('API result message:', result.message)
+      console.log('API result course:', result.course)
+      
+      if (result.success) {
+        console.log('✅ Course created with thumbnail:', result.course?.courseThumbnail)
+        toast.success('Course created successfully!')
+        
+        if (!user) {
+          toast.error('User not found')
+          return
+        }
+        
+        // Save to localStorage for immediate display - user-specific
+        const storageKey = `educatorCourses_${user.id}`
+        const savedCourses = localStorage.getItem(storageKey)
+        let educatorCoursesFromStorage = []
+        
+        if (savedCourses) {
+          try {
+            educatorCoursesFromStorage = JSON.parse(savedCourses)
+          } catch (error) {
+            console.error('Error loading educator courses:', error)
+          }
+        }
+        
+        // Add the new course - it already has educator populated from backend
+        educatorCoursesFromStorage.push(result.course)
+        localStorage.setItem(storageKey, JSON.stringify(educatorCoursesFromStorage))
+        
+        console.log('Course saved to localStorage for user:', user.id)
+        console.log('Thumbnail URL:', result.course?.courseThumbnail)
+        
+        // Dispatch event to notify AppContext to reload courses
+        window.dispatchEvent(new Event('coursesUpdated'))
+        
+        // Reset form
+        setCourseTitle('')
+        setCoursePrice(0)
+        setDiscount(0)
+        setImage(null)
+        setChapters([])
+        if (quillRef.current) {
+          quillRef.current.root.innerHTML = ''
+        }
+        
+        // Navigate to My Courses
+        setTimeout(() => {
+          navigate('/educator/my-courses')
+        }, 1000)
+      } else {
+        console.error('❌ Failed to create course:', result.message)
+        toast.error(result.message || 'Failed to create course')
+      }
+    } catch (error) {
+      console.error('Error creating course:', error)
+      toast.error('Failed to create course. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   };
 
   useEffect(()=>{
@@ -135,7 +280,7 @@ const AddCourse = () => {
               <img src={assets.file_upload_icon} alt='' className='p-3 bg-blue-500 rounded'/>
               <input type="file" id='thumbnailImage' onChange={e => setImage(e.target.files[0])}
               accept='image/*' hidden />
-              <img className='max-h-10' src={image ? URL.createObjectURL(image) : ''} alt="" />
+              {image && <img className='max-h-10' src={URL.createObjectURL(image)} alt="thumbnail preview" />}
             </label>
           </div>
         </div>
@@ -249,9 +394,13 @@ const AddCourse = () => {
           )
           }
         </div>
-        <button type='submit' className='bg-black text-white w-max py-2.5 px-8
-        rounded my-4'>
-          ADD
+        <button 
+          type='submit' 
+          disabled={isSubmitting}
+          className={`${isSubmitting ? 'bg-gray-400' : 'bg-black'} text-white w-max py-2.5 px-8
+          rounded my-4 transition-colors`}
+        >
+          {isSubmitting ? 'UPLOADING...' : 'ADD'}
         </button>
       </form>
     </div>

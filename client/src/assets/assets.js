@@ -126,88 +126,192 @@ export const dummyTestimonial = [
 ];
 
 export const dummyDashboardData = {
-    "totalEarnings": 707.38,
+    "totalEarnings": 1247.85,
     "enrolledStudentsData": [
         {
             "courseTitle": "Introduction to JavaScript",
             "student": {
-                "_id": "user_2qQlvXyr02B4Bq6hT0Gvaa5fT9V",
-                "name": "Great Stack",
-                "imageUrl": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18ycVFsdmFMSkw3ckIxNHZMU2o4ZURWNEtmR2IifQ"
+                "_id": "user_001",
+                "name": "Sarah Johnson",
+                "imageUrl": "https://i.pravatar.cc/150?img=1"
             }
         },
         {
             "courseTitle": "Advanced Python Programming",
             "student": {
-                "_id": "user_2qQlvXyr02B4Bq6hT0Gvaa5fT9V",
-                "name": "Great Stack",
-                "imageUrl": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18ycVFsdmFMSkw3ckIxNHZMU2o4ZURWNEtmR2IifQ"
+                "_id": "user_002",
+                "name": "Michael Chen",
+                "imageUrl": "https://i.pravatar.cc/150?img=12"
             }
         },
         {
             "courseTitle": "Web Development Bootcamp",
             "student": {
-                "_id": "user_2qQlvXyr02B4Bq6hT0Gvaa5fT9V",
-                "name": "Great Stack",
-                "imageUrl": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18ycVFsdmFMSkw3ckIxNHZMU2o4ZURWNEtmR2IifQ"
+                "_id": "user_003",
+                "name": "Emily Rodriguez",
+                "imageUrl": "https://i.pravatar.cc/150?img=5"
+            }
+        },
+        {
+            "courseTitle": "React Masterclass",
+            "student": {
+                "_id": "user_004",
+                "name": "David Kim",
+                "imageUrl": "https://i.pravatar.cc/150?img=13"
             }
         },
         {
             "courseTitle": "Data Science with Python",
             "student": {
-                "_id": "user_2qQlvXyr02B4Bq6hT0Gvaa5fT9V",
-                "name": "Great Stack",
-                "imageUrl": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18ycVFsdmFMSkw3ckIxNHZMU2o4ZURWNEtmR2IifQ"
+                "_id": "user_005",
+                "name": "Jessica Martinez",
+                "imageUrl": "https://i.pravatar.cc/150?img=9"
             }
         },
         {
             "courseTitle": "Cybersecurity Basics",
             "student": {
-                "_id": "user_2qQlvXyr02B4Bq6hT0Gvaa5fT9V",
-                "name": "Great Stack",
-                "imageUrl": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18ycVFsdmFMSkw3ckIxNHZMU2o4ZURWNEtmR2IifQ"
+                "_id": "user_006",
+                "name": "James Wilson",
+                "imageUrl": "https://i.pravatar.cc/150?img=14"
+            }
+        },
+        {
+            "courseTitle": "Introduction to JavaScript",
+            "student": {
+                "_id": "user_007",
+                "name": "Sophia Lee",
+                "imageUrl": "https://i.pravatar.cc/150?img=10"
+            }
+        },
+        {
+            "courseTitle": "Advanced Python Programming",
+            "student": {
+                "_id": "user_008",
+                "name": "Daniel Brown",
+                "imageUrl": "https://i.pravatar.cc/150?img=15"
+            }
+        },
+        {
+            "courseTitle": "Web Development Bootcamp",
+            "student": {
+                "_id": "user_009",
+                "name": "Olivia Taylor",
+                "imageUrl": "https://i.pravatar.cc/150?img=20"
+            }
+        },
+        {
+            "courseTitle": "React Masterclass",
+            "student": {
+                "_id": "user_010",
+                "name": "Ryan Anderson",
+                "imageUrl": "https://i.pravatar.cc/150?img=17"
             }
         }
     ],
-    "totalCourses": 8
+    "totalCoursses": 8
 }
 
 export const dummyStudentEnrolled = [
     {
         "student": {
-            "_id": "user_2qQlvXyr02B4Bq6hT0Gvaa5fT9V",
-            "name": "GreatStack",
-            "imageUrl": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18ycVFsdmFMSkw3ckIxNHZMU2o4ZURWNEtmR2IifQ"
+            "_id": "user_001",
+            "name": "Sarah Johnson",
+            "email": "sarah.j@example.com",
+            "imageUrl": "https://i.pravatar.cc/150?img=1"
         },
         "courseTitle": "Introduction to JavaScript",
         "purchaseDate": "2024-12-20T08:39:55.509Z"
     },
     {
         "student": {
-            "_id": "user_2qQlvXyr02B4Bq6hT0Gvaa5fT9V",
-            "name": "GreatStack",
-            "imageUrl": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18ycVFsdmFMSkw3ckIxNHZMU2o4ZURWNEtmR2IifQ"
+            "_id": "user_002",
+            "name": "Michael Chen",
+            "email": "michael.chen@example.com",
+            "imageUrl": "https://i.pravatar.cc/150?img=12"
         },
-        "courseTitle": "Introduction to JavaScript",
+        "courseTitle": "Advanced Python Programming",
         "purchaseDate": "2024-12-20T08:59:49.964Z"
     },
     {
         "student": {
-            "_id": "user_2qQlvXyr02B4Bq6hT0Gvaa5fT9V",
-            "name": "GreatStack",
-            "imageUrl": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18ycVFsdmFMSkw3ckIxNHZMU2o4ZURWNEtmR2IifQ"
+            "_id": "user_003",
+            "name": "Emily Rodriguez",
+            "email": "emily.r@example.com",
+            "imageUrl": "https://i.pravatar.cc/150?img=5"
         },
-        "courseTitle": "Advanced Python Programming",
+        "courseTitle": "Web Development Bootcamp",
         "purchaseDate": "2024-12-20T11:03:42.931Z"
     },
     {
         "student": {
-            "_id": "user_2qQlvXyr02B4Bq6hT0Gvaa5fT9V",
-            "name": "GreatStack",
-            "imageUrl": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18ycVFsdmFMSkw3ckIxNHZMU2o4ZURWNEtmR2IifQ"
+            "_id": "user_004",
+            "name": "David Kim",
+            "email": "david.kim@example.com",
+            "imageUrl": "https://i.pravatar.cc/150?img=13"
+        },
+        "courseTitle": "React Masterclass",
+        "purchaseDate": "2024-12-20T11:04:48.798Z"
+    },
+    {
+        "student": {
+            "_id": "user_005",
+            "name": "Jessica Martinez",
+            "email": "jessica.m@example.com",
+            "imageUrl": "https://i.pravatar.cc/150?img=9"
+        },
+        "courseTitle": "Introduction to JavaScript",
+        "purchaseDate": "2024-12-21T09:15:22.123Z"
+    },
+    {
+        "student": {
+            "_id": "user_006",
+            "name": "James Wilson",
+            "email": "james.w@example.com",
+            "imageUrl": "https://i.pravatar.cc/150?img=14"
+        },
+        "courseTitle": "Advanced Python Programming",
+        "purchaseDate": "2024-12-21T10:30:45.456Z"
+    },
+    {
+        "student": {
+            "_id": "user_007",
+            "name": "Sophia Lee",
+            "email": "sophia.lee@example.com",
+            "imageUrl": "https://i.pravatar.cc/150?img=10"
         },
         "courseTitle": "Web Development Bootcamp",
-        "purchaseDate": "2024-12-20T11:04:48.798Z"
+        "purchaseDate": "2024-12-22T14:20:33.789Z"
+    },
+    {
+        "student": {
+            "_id": "user_008",
+            "name": "Daniel Brown",
+            "email": "daniel.b@example.com",
+            "imageUrl": "https://i.pravatar.cc/150?img=15"
+        },
+        "courseTitle": "React Masterclass",
+        "purchaseDate": "2024-12-22T16:45:12.321Z"
+    },
+    {
+        "student": {
+            "_id": "user_009",
+            "name": "Olivia Taylor",
+            "email": "olivia.t@example.com",
+            "imageUrl": "https://i.pravatar.cc/150?img=20"
+        },
+        "courseTitle": "Introduction to JavaScript",
+        "purchaseDate": "2024-12-23T08:10:55.654Z"
+    },
+    {
+        "student": {
+            "_id": "user_010",
+            "name": "Ryan Anderson",
+            "email": "ryan.a@example.com",
+            "imageUrl": "https://i.pravatar.cc/150?img=17"
+        },
+        "courseTitle": "Advanced Python Programming",
+        "purchaseDate": "2024-12-23T11:25:40.987Z"
     }
 ]
 
@@ -267,7 +371,11 @@ export const dummyCourses = [
                 ]
             }
         ],
-        "educator": "675ac1512100b91a6d9b8b24",
+        "educator": {
+            "_id": "675ac1512100b91a6d9b8b24",
+            "name": "John Smith",
+            "email": "john.smith@example.com"
+        },
         "enrolledStudents": [
             "user_2qQlvXyr02B4Bq6hT0Gvaa5fT9V",
             "user_2qQlvXyr02B4Bq6hT0Gvaa5fT9V",
