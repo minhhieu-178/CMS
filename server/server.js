@@ -19,25 +19,36 @@ await connectDB()
 await connectCloudinary()
 
 //Middlewares
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:5174',
-  process.env.CLIENT_URL // Production frontend URL
-].filter(Boolean)
-
+// Temporary: Allow all origins for debugging
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true)
-    
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true)
-    } else {
-      callback(new Error('Not allowed by CORS'))
-    }
-  },
-  credentials: true
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }))
+
+// Production CORS (uncomment when ready):
+// const allowedOrigins = [
+//   'http://localhost:5173',
+//   'http://localhost:5174',
+//   'https://cms-4x0wdwa4m-hieus-projects-c189a49e.vercel.app',
+//   process.env.CLIENT_URL
+// ].filter(Boolean)
+// 
+// app.use(cors({
+//   origin: (origin, callback) => {
+//     if (!origin) return callback(null, true)
+//     if (allowedOrigins.includes(origin)) {
+//       callback(null, true)
+//     } else {
+//       console.log('CORS blocked origin:', origin)
+//       callback(new Error('Not allowed by CORS'))
+//     }
+//   },
+//   credentials: true,
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+//   allowedHeaders: ['Content-Type', 'Authorization']
+// }))
 
 app.use(express.json())
 app.use(clerkMiddleware())
