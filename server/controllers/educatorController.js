@@ -1,19 +1,27 @@
-import { clerkClient } from '@clerk/express'
-
-// update role to educator
-export const updateRoleToEducator = async (req, res)=>{
+export const updateRoleToEducator = async (req, res) => {
     try {
         const userId = req.auth.userId
+        
+        if (!userId) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Chưa xác thực' 
+            })
+        }
 
         await clerkClient.users.updateUserMetadata(userId, {
-            publicMetadata:{
+            publicMetadata: {
                 role: 'educator',
             }
         })
 
-        res.json({ success: true, message: 'You can publish a course now' })
+        res.json({ success: true, message: 'Bạn đã có thể xuất bản khóa học' })
 
     } catch (error) {
-        res.json({ success: false, message: error.message })
+        console.error('Lỗi khi cập nhật vai trò:', error)
+        res.status(500).json({ 
+            success: false, 
+            message: 'Không thể cập nhật vai trò' 
+        })
     }
 }
