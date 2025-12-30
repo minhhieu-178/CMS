@@ -11,6 +11,7 @@ import Dashboard from './pages/educator/Dashboard'
 import AddCourse from './pages/educator/AddCourse'
 import MyCourses from './pages/educator/MyCourses'
 import StudentsEnrolled from './pages/educator/StudentsEnrolled'
+import MigrateLocalCourses from './pages/educator/MigrateLocalCourses'
 import Navbar from './components/students/Navbar'
 import SignIn from './pages/auth/SignIn'
 import SignUp from './pages/auth/SignUp'
@@ -62,6 +63,7 @@ const App = () => {
           <Route path='add-course' element={<AddCourse/>}/>
           <Route path='my-courses' element={<MyCourses/>}/>
           <Route path='student-enrolled' element={<StudentsEnrolled/>}/>
+          <Route path='migrate-courses' element={<MigrateLocalCourses/>}/>
         </Route>
       </Routes>
     </div>

@@ -125,6 +125,29 @@ const Dashboard = () => {
           <p className='text-gray-600'>Welcome back! Here's your overview</p>
         </div>
 
+        {/* Migration Notice */}
+        <div className='bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl shadow-xl p-6 text-white'>
+          <div className='flex items-start gap-4'>
+            <div className='w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0'>
+              <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12' />
+              </svg>
+            </div>
+            <div className='flex-1'>
+              <h3 className='text-xl font-bold mb-2'>📦 Migrate Your Local Courses to Cloud</h3>
+              <p className='text-white/90 mb-4'>
+                Have courses saved locally? Upload them to the cloud database so they're accessible from any device and appear in search results!
+              </p>
+              <button
+                onClick={() => navigate('/educator/migrate-courses')}
+                className='bg-white text-blue-600 px-6 py-2 rounded-lg font-semibold hover:bg-blue-50 transition-colors shadow-lg'
+              >
+                Migrate Courses →
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Stats Cards */}
         <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
           <div className='bg-white rounded-2xl shadow-xl p-6 border border-blue-100 hover:shadow-2xl transition-shadow'>
