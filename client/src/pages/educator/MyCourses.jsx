@@ -32,29 +32,36 @@ const MyCourses = () => {
       const userId = user.id
       const storageKey = `educatorCourses_${userId}`
       
-      // Try to get from localStorage first (faster) - but user-specific
+      // Try API first (to get latest from MongoDB)
+      try {
+        const result = await getEducatorCourses(token)
+        if (result.success && result.courses) {
+          console.log('Loaded courses from API:', result.courses.length)
+          setCourses(result.courses)
+          
+          // Save to localStorage for offline access - user-specific
+          if (result.courses.length > 0) {
+            localStorage.setItem(storageKey, JSON.stringify(result.courses))
+          }
+          
+          setLoading(false)
+          return
+        }
+      } catch (apiError) {
+        console.log('API failed, trying localStorage:', apiError.message)
+      }
+      
+      // Fallback to localStorage if API fails
       const savedCourses = localStorage.getItem(storageKey)
       if (savedCourses) {
         try {
           const localCourses = JSON.parse(savedCourses)
-          if (localCourses.length > 0) {
-            console.log('Loaded courses from localStorage for user:', userId)
-            setCourses(localCourses)
-            setLoading(false)
-            return
-          }
+          console.log('Loaded courses from localStorage for user:', userId)
+          setCourses(localCourses)
         } catch (error) {
           console.error('Error parsing localStorage courses:', error)
+          setCourses([])
         }
-      }
-      
-      // If no localStorage, try API
-      const result = await getEducatorCourses(token)
-      if (result.success && result.courses.length > 0) {
-        console.log('Loaded courses from API:', result.courses.length)
-        setCourses(result.courses)
-        // Save to localStorage for next time - user-specific
-        localStorage.setItem(storageKey, JSON.stringify(result.courses))
       } else {
         console.log('No courses found')
         setCourses([])
