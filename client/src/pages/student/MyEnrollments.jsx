@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react'
+import React, { useContext, useState, useEffect } from 'react'
 import { AppContext } from '../../context/AppContext'
 import {Line} from 'rc-progress' 
 import Footer from '../../components/students/Footer'
@@ -23,6 +23,13 @@ const MyEnrollments = () => {
     {lectureCompleted: 0, totalLectures: 2},
     {lectureCompleted: 5, totalLectures: 5}
   ])
+
+  // Reload enrollments when component mounts
+  useEffect(() => {
+    console.log('MyEnrollments mounted, enrolled courses:', enrolledCourses.length)
+    // Trigger reload
+    window.dispatchEvent(new Event('enrollmentsUpdated'))
+  }, [])
 
   const getProgressPercentage = (index) => {
     if (!progressArray[index]) return 0

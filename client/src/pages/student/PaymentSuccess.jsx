@@ -13,6 +13,12 @@ const PaymentSuccess = () => {
     if (sessionId) {
       toast.success('Payment successful! You are now enrolled in the course.')
       
+      // TODO: Call API to verify payment and create enrollment
+      // For now, we'll add to localStorage (this should be done by webhook in production)
+      
+      // Trigger event to reload enrollments
+      window.dispatchEvent(new Event('enrollmentsUpdated'))
+      
       // Countdown redirect
       const timer = setInterval(() => {
         setCountdown(prev => {

@@ -101,6 +101,9 @@ const CourseDetails = () => {
             status: 'active'
           })
           localStorage.setItem('myEnrollments', JSON.stringify(enrollments))
+          
+          // Trigger event to reload enrollments
+          window.dispatchEvent(new Event('enrollmentsUpdated'))
         }
         
         setTimeout(() => {
@@ -125,6 +128,9 @@ const CourseDetails = () => {
             status: 'active'
           })
           localStorage.setItem('myEnrollments', JSON.stringify(enrollments))
+          
+          // Trigger event to reload enrollments
+          window.dispatchEvent(new Event('enrollmentsUpdated'))
         }
         
         setTimeout(() => {

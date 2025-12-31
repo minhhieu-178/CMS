@@ -220,7 +220,30 @@ export const AppContextProvider = (props) => {
 
     // Fetch User Enrolled Courses
     const fetchUserEnrolledCourses = async ()=>{
-        setEnrolledCourses(dummyCourses)
+        try {
+            // Get enrollments from localStorage
+            const enrollments = JSON.parse(localStorage.getItem('myEnrollments') || '[]')
+            console.log('My enrollments:', enrollments)
+            
+            if (enrollments.length === 0) {
+                setEnrolledCourses([])
+                return
+            }
+            
+            // Get enrolled course IDs
+            const enrolledCourseIds = enrollments.map(e => e.courseId)
+            
+            // Filter courses from allCourses that match enrolled IDs
+            const enrolled = allCourses.filter(course => 
+                enrolledCourseIds.includes(course._id)
+            )
+            
+            console.log('Enrolled courses found:', enrolled.length)
+            setEnrolledCourses(enrolled)
+        } catch (error) {
+            console.error('Error fetching enrolled courses:', error)
+            setEnrolledCourses([])
+        }
     }
 
     // Add new course (educator)
@@ -256,8 +279,14 @@ export const AppContextProvider = (props) => {
 
     useEffect(() => {
         fetchAllCourses()
-        fetchUserEnrolledCourses()
     }, [])
+
+    // Reload enrolled courses when allCourses changes
+    useEffect(() => {
+        if (allCourses.length > 0) {
+            fetchUserEnrolledCourses()
+        }
+    }, [allCourses])
 
     // Reload courses when educator courses change
     useEffect(() => {
@@ -271,12 +300,19 @@ export const AppContextProvider = (props) => {
             fetchAllCourses()
         }
         
+        const handleEnrollmentsUpdated = () => {
+            console.log('Enrollments updated event received, reloading...')
+            fetchUserEnrolledCourses()
+        }
+        
         window.addEventListener('coursesUpdated', handleCoursesUpdated)
+        window.addEventListener('enrollmentsUpdated', handleEnrollmentsUpdated)
         
         return () => {
             window.removeEventListener('coursesUpdated', handleCoursesUpdated)
+            window.removeEventListener('enrollmentsUpdated', handleEnrollmentsUpdated)
         }
-    }, [])
+    }, [allCourses])
 
     useEffect(()=>{
         if(user){
