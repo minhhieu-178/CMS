@@ -10,6 +10,29 @@ import humanizeDuration from 'humanize-duration'
 import Footer from '../../components/students/Footer'
 import YouTube from 'react-youtube'
 
+// Extract YouTube video ID from various URL formats
+const getYouTubeVideoId = (url) => {
+  if (!url) return null
+  
+  // Handle youtu.be format: https://youtu.be/VIDEO_ID
+  if (url.includes('youtu.be/')) {
+    return url.split('youtu.be/')[1].split('?')[0].split('&')[0]
+  }
+  
+  // Handle youtube.com format: https://www.youtube.com/watch?v=VIDEO_ID
+  if (url.includes('youtube.com/watch')) {
+    const urlParams = new URLSearchParams(url.split('?')[1])
+    return urlParams.get('v')
+  }
+  
+  // If it's already just the ID
+  if (!url.includes('http') && !url.includes('/')) {
+    return url
+  }
+  
+  return null
+}
+
 const CourseDetails = () => {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -243,7 +266,7 @@ const CourseDetails = () => {
                               <button
                                 onClick={() =>
                                   setPlayerData({
-                                    videoId: lecture.lectureUrl.split('/').pop(),
+                                    videoId: getYouTubeVideoId(lecture.lectureUrl),
                                   })
                                 }
                                 className="text-blue-600 hover:text-blue-700 font-medium hover:underline"
