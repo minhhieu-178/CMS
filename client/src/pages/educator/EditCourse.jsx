@@ -23,6 +23,7 @@ const EditCourse = () => {
   const { user } = useUser();
 
   const [loading, setLoading] = useState(true);
+  const [courseData, setCourseData] = useState(null);
   const [courseTitle, setCourseTitle] = useState('')
   const [coursePrice, setCoursePrice] = useState(0)
   const [discount, setDiscount] = useState(0)
@@ -49,6 +50,7 @@ const EditCourse = () => {
   const loadCourseData = async () => {
     try {
       setLoading(true);
+      let loadedCourse = null;
       
       // Try to load from localStorage first
       if (user) {
@@ -60,20 +62,30 @@ const EditCourse = () => {
           const course = courses.find(c => c._id === courseId);
           
           if (course) {
-            populateCourseData(course);
-            setLoading(false);
-            return;
+            loadedCourse = course;
           }
         }
       }
       
       // If not in localStorage, fetch from API
-      const result = await getCourseDetails(courseId);
-      if (result.success) {
-        populateCourseData(result.course);
+      if (!loadedCourse) {
+        const result = await getCourseDetails(courseId);
+        if (result.success) {
+          loadedCourse = result.course;
+        } else {
+          toast.error('Failed to load course');
+          navigate('/educator/my-courses');
+          return;
+        }
+      }
+      
+      // Store course data in state
+      if (loadedCourse) {
+        console.log('💾 Setting courseData state:', loadedCourse.courseTitle);
+        setCourseData(loadedCourse);
+        populateCourseData(loadedCourse);
       } else {
-        toast.error('Failed to load course');
-        navigate('/educator/my-courses');
+        console.log('❌ No course data loaded');
       }
     } catch (error) {
       console.error('Error loading course:', error);
@@ -85,18 +97,16 @@ const EditCourse = () => {
   };
 
   const populateCourseData = (course) => {
+    console.log('📚 Populating course data:', course.courseTitle);
+    console.log('📝 Description:', course.courseDescription?.substring(0, 100));
+    
     setCourseTitle(course.courseTitle || '');
     setCoursePrice(course.coursePrice || 0);
     setDiscount(course.discount || 0);
     setExistingThumbnail(course.courseThumbnail || '');
     setChapters(course.courseContent || []);
     
-    // Set description in Quill editor after a short delay to ensure it's initialized
-    setTimeout(() => {
-      if (quillRef.current && course.courseDescription) {
-        quillRef.current.root.innerHTML = course.courseDescription;
-      }
-    }, 100);
+    // Description will be set by useEffect when quillRef is ready
   };
 
   const handleChapter = (action, chapterId) => {
@@ -278,42 +288,72 @@ const EditCourse = () => {
   };
 
   useEffect(()=>{
-    // Initiate Quill only once
-    if (!quillRef.current && editorRef.current) {
-      quillRef.current = new Quill(editorRef.current, {
-        theme: 'snow',
-        modules: {
-          toolbar: [
-            [{ 'header': [1, 2, 3, false] }],
-            ['bold', 'italic', 'underline'],
-            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-            ['link'],
-            ['clean']
-          ]
-        }
-      });
-    }
-  }, [])
-
-  // Separate effect to populate description after Quill is ready
-  useEffect(() => {
-    if (quillRef.current && !loading) {
-      // Load course data from localStorage
-      if (user) {
-        const storageKey = `educatorCourses_${user.id}`;
-        const storedCourses = localStorage.getItem(storageKey);
+    // Initiate Quill only once, with a small delay to ensure DOM is ready
+    const initQuill = () => {
+      if (!quillRef.current && editorRef.current) {
+        console.log('🎨 Initializing Quill editor');
+        console.log('📦 Editor ref exists:', !!editorRef.current);
         
-        if (storedCourses) {
-          const courses = JSON.parse(storedCourses);
-          const course = courses.find(c => c._id === courseId);
-          
-          if (course && course.courseDescription) {
-            quillRef.current.root.innerHTML = course.courseDescription;
+        quillRef.current = new Quill(editorRef.current, {
+          theme: 'snow',
+          modules: {
+            toolbar: [
+              [{ 'header': [1, 2, 3, false] }],
+              ['bold', 'italic', 'underline'],
+              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+              ['link'],
+              ['clean']
+            ]
           }
+        });
+        
+        console.log('✅ Quill editor initialized');
+        console.log('🔧 Quill is disabled?', quillRef.current.isEnabled() === false);
+        
+        // Explicitly enable if disabled
+        if (!quillRef.current.isEnabled()) {
+          console.log('⚠️ Quill was disabled, enabling now...');
+          quillRef.current.enable();
         }
       }
+    };
+    
+    // Small delay to ensure DOM is fully ready
+    const timer = setTimeout(initQuill, 50);
+    return () => clearTimeout(timer);
+  }, []) // Only run once on mount
+
+  // Separate effect to populate description when courseData changes
+  useEffect(() => {
+    console.log('📊 courseData useEffect triggered');
+    console.log('  - quillRef.current:', !!quillRef.current);
+    console.log('  - courseData:', !!courseData);
+    console.log('  - courseDescription:', courseData?.courseDescription?.substring(0, 50));
+    
+    if (quillRef.current && courseData && courseData.courseDescription) {
+      console.log('🔄 Setting course description in Quill');
+      console.log('📝 Description length:', courseData.courseDescription.length);
+      console.log('🔧 Quill enabled?', quillRef.current.isEnabled());
+      
+      setTimeout(() => {
+        try {
+          quillRef.current.root.innerHTML = courseData.courseDescription;
+          
+          // Force enable after setting content
+          if (!quillRef.current.isEnabled()) {
+            console.log('⚠️ Re-enabling Quill after setting content');
+            quillRef.current.enable();
+          }
+          
+          console.log('✅ Description set successfully');
+        } catch (error) {
+          console.error('❌ Error setting description:', error);
+        }
+      }, 100);
+    } else {
+      console.log('⏸️ Waiting for Quill or courseData to be ready');
     }
-  }, [loading, user, courseId])
+  }, [courseData])
 
   if (loading) {
     return <ImprovedLoading />
@@ -339,7 +379,15 @@ const EditCourse = () => {
         </div>
         <div className='flex flex-col gap-1'>
           <p>Course Description</p>
-          <div ref={editorRef} className='bg-white border border-gray-500 rounded' style={{ minHeight: '200px' }}></div>
+          <div 
+            ref={editorRef} 
+            className='bg-white border border-gray-500 rounded' 
+            style={{ 
+              minHeight: '200px',
+              pointerEvents: 'auto',
+              cursor: 'text'
+            }}
+          ></div>
         </div>
         
         <div className='flex items-center justify-between flex-wrap'>
