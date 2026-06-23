@@ -1,34 +1,125 @@
 import React, { useContext, useState, useEffect } from 'react'
 import { AppContext } from '../../context/AppContext'
+import { useUser, useAuth } from '@clerk/clerk-react'
 import {Line} from 'rc-progress' 
 import Footer from '../../components/students/Footer'
+import { getCourseQuizAttempts } from '../../utils/api'
 
 const MyEnrollments = () => {
 
-  const {enrolledCourses, calculateCourseDuration, navigate} = useContext(AppContext)
+  const {enrolledCourses, calculateCourseDuration, calculateNoOfLectures, navigate} = useContext(AppContext)
+  const { user } = useUser()
+  const { getToken } = useAuth()
 
-  const [progressArray, setProgressArray] = useState([
-    {lectureCompleted: 2, totalLectures: 4},
-    {lectureCompleted: 1, totalLectures: 5},
-    {lectureCompleted: 3, totalLectures: 6},
-    {lectureCompleted: 4, totalLectures: 4},
-    {lectureCompleted: 0, totalLectures: 3},
-    {lectureCompleted: 5, totalLectures: 7},
-    {lectureCompleted: 6, totalLectures: 8},
-    {lectureCompleted: 2, totalLectures: 6},
-    {lectureCompleted: 4, totalLectures: 10},
-    {lectureCompleted: 3, totalLectures: 5},
-    {lectureCompleted: 7, totalLectures: 7},
-    {lectureCompleted: 1, totalLectures: 4},
-    {lectureCompleted: 0, totalLectures: 2},
-    {lectureCompleted: 5, totalLectures: 5}
-  ])
+  const [progressArray, setProgressArray] = useState([])
+
+  // Calculate real progress from completedLectures
+  useEffect(() => {
+    const calculateProgress = async () => {
+      if (enrolledCourses.length > 0 && user) {
+        const realProgress = await Promise.all(enrolledCourses.map(async (course) => {
+          const totalLectures = calculateNoOfLectures(course)
+          
+          // Load completed lectures for this course from localStorage
+          const storageKey = `completedLectures_${course._id}`
+          const completedData = localStorage.getItem(storageKey)
+          const completedLectures = completedData ? JSON.parse(completedData) : []
+          
+          // Load quizzes for this course (try MongoDB first, fallback to localStorage)
+          let courseQuizzes = []
+          try {
+            const token = await getToken()
+            if (token) {
+              const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/quiz/course/${course._id}/student`, {
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                }
+              })
+              const result = await response.json()
+              if (result.success && result.quizzes) {
+                courseQuizzes = result.quizzes
+                console.log(`✅ Loaded ${courseQuizzes.length} quizzes from MongoDB for course ${course._id}`)
+              }
+            }
+          } catch (error) {
+            console.warn('⚠️ Could not load quizzes from MongoDB, using localStorage:', error)
+          }
+          
+          // Fallback to localStorage if MongoDB failed
+          if (courseQuizzes.length === 0) {
+            const allQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]')
+            courseQuizzes = allQuizzes.filter(q => q.courseId === course._id)
+          }
+          
+          // Load quiz attempts from MongoDB (NOT localStorage)
+          let quizAttempts = []
+          try {
+            const token = await getToken()
+            if (token) {
+              const result = await getCourseQuizAttempts(token, course._id)
+              if (result.success && result.attempts) {
+                quizAttempts = result.attempts
+                console.log(`✅ Loaded ${quizAttempts.length} quiz attempts from MongoDB for course ${course._id}`)
+              }
+            }
+          } catch (error) {
+            console.error('❌ Error loading quiz attempts from MongoDB:', error)
+          }
+          
+          // Count only truly completed lectures
+          let realCompletedCount = 0
+          
+          completedLectures.forEach(lectureId => {
+            // Check if this lecture has a quiz
+            const lectureQuiz = courseQuizzes.find(q => 
+              q.chapterIndex === lectureId.chapter && 
+              q.lectureIndex === lectureId.lecture
+            )
+            
+            if (lectureQuiz) {
+              // Lecture has quiz - only count if passed
+              const passedAttempts = quizAttempts.filter(a => 
+                a.quizId === lectureQuiz._id && 
+                a.passed
+              )
+              if (passedAttempts.length > 0) {
+                realCompletedCount++
+                console.log(`   ✅ Lecture ${lectureId.chapter}-${lectureId.lecture}: Completed + Quiz Passed`)
+              } else {
+                console.log(`   ⚠️  Lecture ${lectureId.chapter}-${lectureId.lecture}: Marked complete but quiz not passed yet`)
+              }
+            } else {
+              // Lecture has no quiz - count as completed
+              realCompletedCount++
+              console.log(`   ✅ Lecture ${lectureId.chapter}-${lectureId.lecture}: Completed (no quiz)`)
+            }
+          })
+          
+          console.log(`📊 Course ${course.courseTitle}: ${realCompletedCount}/${totalLectures} truly completed`)
+          
+          return {
+            lectureCompleted: realCompletedCount,
+            totalLectures: totalLectures
+          }
+        }))
+        
+        setProgressArray(realProgress)
+        console.log('📊 Real progress calculated (with quiz validation):', realProgress)
+      }
+    }
+    
+    calculateProgress()
+  }, [enrolledCourses, user, getToken])
 
   // Reload enrollments when component mounts
   useEffect(() => {
     console.log('MyEnrollments mounted, enrolled courses:', enrolledCourses.length)
-    // Trigger reload
-    window.dispatchEvent(new Event('enrollmentsUpdated'))
+    
+    // Trigger reload if needed
+    if (user?.id && enrolledCourses.length === 0) {
+      console.log('📢 Triggering enrollments reload')
+      window.dispatchEvent(new Event('enrollmentsUpdated'))
+    }
   }, [])
 
   const getProgressPercentage = (index) => {
@@ -158,16 +249,28 @@ const MyEnrollments = () => {
                     )}
                   </td>
                   <td className='px-6 py-4'>
-                    <button 
-                      className={`px-4 py-2 rounded-lg font-medium text-sm transition-all transform hover:scale-105 shadow-md ${
-                        isCompleted(index)
-                          ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600'
-                          : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700'
-                      }`}
-                      onClick={()=> navigate('/player/' + course._id)}
-                    >
-                      {isCompleted(index) ? '✓ Completed' : 'Continue'}
-                    </button>
+                    <div className='flex gap-2'>
+                      <button 
+                        className={`px-4 py-2 rounded-lg font-medium text-sm transition-all transform hover:scale-105 shadow-md ${
+                          isCompleted(index)
+                            ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600'
+                            : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700'
+                        }`}
+                        onClick={()=> navigate('/player/' + course._id)}
+                      >
+                        {isCompleted(index) ? '✓ Completed' : 'Continue'}
+                      </button>
+                      <button 
+                        className='px-4 py-2 rounded-lg font-medium text-sm transition-all transform hover:scale-105 shadow-md bg-purple-100 text-purple-700 hover:bg-purple-200 flex items-center gap-1'
+                        onClick={()=> navigate('/my-progress/' + course._id)}
+                        title='View personalized progress'
+                      >
+                        <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                          <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' />
+                        </svg>
+                        Progress
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

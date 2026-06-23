@@ -1,6 +1,7 @@
 import { useContext, useEffect, useState } from 'react'
 import { AppContext } from '../../context/AppContext'
 import { useAuth } from '@clerk/clerk-react'
+import { useNavigate } from 'react-router-dom'
 import { getEducatorDashboard } from '../../utils/api'
 import ImprovedLoading from '../../components/students/ImprovedLoading'
 
@@ -8,6 +9,7 @@ const Dashboard = () => {
 
   const { currency } = useContext(AppContext)
   const { getToken } = useAuth()
+  const navigate = useNavigate()
   const [dashboardData, setDashboardData] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -28,6 +30,8 @@ const Dashboard = () => {
       try {
         const result = await getEducatorDashboard(token)
         if (result.success) {
+          console.log('Dashboard API Response:', result.data)
+          console.log('Enrolled Students Sample:', result.data.enrolledStudentsData?.[0])
           setDashboardData(result.data)
           setLoading(false)
           return
@@ -158,7 +162,7 @@ const Dashboard = () => {
                 </svg>
               </div>
               <div>
-                <p className='text-3xl font-bold text-gray-900'>{dashboardData.enrolledStudentsData.length}</p>
+                <p className='text-3xl font-bold text-gray-900'>{dashboardData.enrolledStudentsData?.length || 0}</p>
                 <p className='text-sm text-gray-600 font-medium'>Total Enrollments</p>
               </div>
             </div>
@@ -180,7 +184,7 @@ const Dashboard = () => {
                 </svg>
               </div>
               <div>
-                <p className='text-3xl font-bold text-gray-900'>{dashboardData.totalCoursses}</p>
+                <p className='text-3xl font-bold text-gray-900'>{dashboardData.totalCoursses || 0}</p>
                 <p className='text-sm text-gray-600 font-medium'>Total Courses</p>
               </div>
             </div>
@@ -190,7 +194,7 @@ const Dashboard = () => {
                   <path d='M9 2a1 1 0 000 2h2a1 1 0 100-2H9z' />
                   <path fillRule='evenodd' d='M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z' clipRule='evenodd' />
                 </svg>
-                <span className='font-semibold'>{dashboardData.totalCoursses} published</span>
+                <span className='font-semibold'>{dashboardData.totalCoursses || 0} published</span>
               </div>
             </div>
           </div>
@@ -203,7 +207,7 @@ const Dashboard = () => {
                 </svg>
               </div>
               <div>
-                <p className='text-3xl font-bold text-gray-900'>{currency}{dashboardData.totalEarnings}</p>
+                <p className='text-3xl font-bold text-gray-900'>{currency}{String(dashboardData.totalEarnings || '0.00')}</p>
                 <p className='text-sm text-gray-600 font-medium'>Total Earnings</p>
               </div>
             </div>
@@ -238,38 +242,63 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody className='divide-y divide-gray-100'>
-                {dashboardData.enrolledStudentsData.slice(0, 10).map((item, index)=> (
-                  <tr key={index} className='hover:bg-blue-50/50 transition-colors'>
-                    <td className='px-6 py-4 text-center hidden sm:table-cell'>
-                      <span className='w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full inline-flex items-center justify-center font-bold text-sm'>
-                        {index + 1}
-                      </span>
-                    </td>
-                    <td className='px-6 py-4'>
-                      <div className='flex items-center gap-3'>
-                        <img 
-                          src={item.student.imageUrl}
-                          alt={item.student.name}
-                          className='w-10 h-10 rounded-full border-2 border-blue-200 shadow-md'
-                        />
-                        <span className='font-medium text-gray-900'>{item.student.name}</span>
-                      </div>
-                    </td>
-                    <td className='px-6 py-4'>
-                      <span className='text-gray-900 font-semibold text-base'>{item.courseTitle}</span>
-                    </td>
-                    <td className='px-6 py-4 hidden md:table-cell'>
-                      <span className='px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold'>
-                        Active
-                      </span>
+                {dashboardData.enrolledStudentsData && dashboardData.enrolledStudentsData.length > 0 ? (
+                  dashboardData.enrolledStudentsData.slice(0, 10).map((item, index)=> {
+                    // Handle both API response format (studentId, courseId) and localStorage format (student, courseTitle)
+                    const student = item.studentId || item.student
+                    const courseTitle = item.courseId?.courseTitle || item.courseTitle
+                    
+                    // Ensure we always extract strings, never render objects
+                    let studentName = 'Unknown Student'
+                    let studentImage = `https://i.pravatar.cc/150?img=${index + 1}`
+                    
+                    if (student && typeof student === 'object') {
+                      studentName = student.name || 'Unknown Student'
+                      studentImage = student.imageUrl || student.image || studentImage
+                    } else if (typeof student === 'string') {
+                      studentName = student
+                    }
+                    
+                    return (
+                    <tr key={index} className='hover:bg-blue-50/50 transition-colors'>
+                      <td className='px-6 py-4 text-center hidden sm:table-cell'>
+                        <span className='w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full inline-flex items-center justify-center font-bold text-sm'>
+                          {index + 1}
+                        </span>
+                      </td>
+                      <td className='px-6 py-4'>
+                        <div className='flex items-center gap-3'>
+                          <img 
+                            src={String(studentImage)}
+                            alt={String(studentName)}
+                            className='w-10 h-10 rounded-full border-2 border-blue-200 shadow-md'
+                          />
+                          <span className='font-medium text-gray-900'>{String(studentName)}</span>
+                        </div>
+                      </td>
+                      <td className='px-6 py-4'>
+                        <span className='text-gray-900 font-semibold text-base'>{String(courseTitle || 'Unknown Course')}</span>
+                      </td>
+                      <td className='px-6 py-4 hidden md:table-cell'>
+                        <span className='px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold'>
+                          Active
+                        </span>
+                      </td>
+                    </tr>
+                    )
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan="4" className='px-6 py-8 text-center text-gray-500'>
+                      No enrollments yet
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
 
-          {dashboardData.enrolledStudentsData.length > 10 && (
+          {dashboardData.enrolledStudentsData && dashboardData.enrolledStudentsData.length > 10 && (
             <div className='p-4 bg-gray-50 border-t border-gray-200 text-center'>
               <button className='text-blue-600 hover:text-blue-700 font-medium text-sm'>
                 View all {dashboardData.enrolledStudentsData.length} enrollments →

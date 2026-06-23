@@ -53,7 +53,7 @@ export const getCourseDetails = async (courseId) => {
 
 // Get enrolled courses (protected)
 export const getEnrolledCourses = async (token) => {
-  return apiRequest('/api/student/my-courses', {
+  return apiRequest('/api/enrollment/my-enrollments', {
     headers: { Authorization: `Bearer ${token}` }
   })
 }
@@ -203,6 +203,15 @@ export const deleteRating = async (token, courseId) => {
   })
 }
 
+// ===== ADMIN APIs =====
+
+// Get admin analytics
+export const getAdminAnalytics = async (token) => {
+  return apiRequest('/api/admin/analytics', {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+}
+
 // ==================== PAYMENT APIs ====================
 
 // Create payment order
@@ -217,6 +226,147 @@ export const createPaymentOrder = async (token, courseId) => {
 // Get payment history
 export const getPaymentHistory = async (token) => {
   return apiRequest('/api/payment/history', {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+}
+
+// ==================== PERSONALIZATION APIs ====================
+
+// Get personalized dashboard for a course
+export const getPersonalizedDashboard = async (token, courseId) => {
+  return apiRequest(`/api/personalization/dashboard/${courseId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+}
+
+// Get course recommendations
+export const getCourseRecommendations = async (token, courseId) => {
+  return apiRequest(`/api/personalization/recommendations/${courseId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+}
+
+// Check if can access next lesson
+export const checkLessonAccess = async (token, courseId, lectureId) => {
+  return apiRequest(`/api/personalization/check-access/${courseId}/${lectureId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+}
+
+// Update lecture progress
+export const updateLectureProgress = async (token, courseId, lectureId, chapterId) => {
+  return apiRequest('/api/personalization/progress', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ courseId, lectureId, chapterId })
+  })
+}
+
+// Get learning analytics for a course
+export const getLearningAnalytics = async (token, courseId) => {
+  return apiRequest(`/api/personalization/analytics/${courseId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+}
+
+// Get all user analytics
+export const getAllUserAnalytics = async (token) => {
+  return apiRequest('/api/personalization/analytics', {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+}
+
+// Analyze quiz performance
+export const analyzeQuizPerformance = async (token, courseId, quizId, attemptId, score, totalQuestions, timeSpent) => {
+  return apiRequest('/api/personalization/analyze-quiz', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ courseId, quizId, attemptId, score, totalQuestions, timeSpent })
+  })
+}
+
+// ==================== QUIZ APIs ====================
+
+// Create quiz (Educator)
+export const createQuiz = async (token, quizData) => {
+  return apiRequest('/api/quiz/create', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(quizData)
+  })
+}
+
+// Get course quizzes (Educator)
+export const getCourseQuizzes = async (token, courseId) => {
+  return apiRequest(`/api/quiz/course/${courseId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+}
+
+// Get quiz by ID (Student - for taking quiz)
+export const getQuiz = async (token, quizId) => {
+  return apiRequest(`/api/quiz/${quizId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+}
+
+// Submit quiz attempt (Student)
+export const submitQuizAttempt = async (token, quizId, answers, startedAt) => {
+  return apiRequest('/api/quiz/submit', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ quizId, answers, startedAt })
+  })
+}
+
+// Get my quiz attempts (Student)
+export const getMyQuizAttempts = async (token, quizId) => {
+  return apiRequest(`/api/quiz/${quizId}/attempts`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+}
+
+// Get quiz by ID (Educator - for editing)
+export const getQuizById = async (token, quizId) => {
+  return apiRequest(`/api/quiz/${quizId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+}
+
+// Get quiz attempt details (Student)
+export const getQuizAttemptDetails = async (token, attemptId) => {
+  return apiRequest(`/api/quiz/attempt/${attemptId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+}
+
+// Get all quiz attempts for a course (Student)
+export const getCourseQuizAttempts = async (token, courseId) => {
+  return apiRequest(`/api/quiz/course/${courseId}/attempts`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+}
+
+// Update quiz (Educator)
+export const updateQuiz = async (token, quizId, quizData) => {
+  return apiRequest(`/api/quiz/${quizId}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(quizData)
+  })
+}
+
+// Delete quiz (Educator)
+export const deleteQuiz = async (token, quizId) => {
+  return apiRequest(`/api/quiz/${quizId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  })
+}
+
+// Get quiz analytics (Educator)
+export const getQuizAnalytics = async (token, quizId) => {
+  return apiRequest(`/api/quiz/${quizId}/analytics`, {
     headers: { Authorization: `Bearer ${token}` }
   })
 }

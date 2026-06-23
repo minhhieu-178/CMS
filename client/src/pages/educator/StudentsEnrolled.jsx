@@ -1,41 +1,79 @@
 import { useEffect, useState } from 'react'
-import { useAuth } from '@clerk/clerk-react'
-import { getEnrolledStudents } from '../../utils/api'
+import { useAuth, useUser } from '@clerk/clerk-react'
 import ImprovedLoading from '../../components/students/ImprovedLoading'
+import { toast } from 'react-toastify'
+import { getEnrolledStudents } from '../../utils/api'
 
 const StudentsEnrolled = () => {
 
+  const { user } = useUser()
   const { getToken } = useAuth()
   const [enrolledStudents, setEnrolledStudents] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchStudents()
-  }, [])
+    if (user) {
+      fetchStudents()
+    }
+  }, [user])
 
   const fetchStudents = async () => {
     try {
       setLoading(true)
-      const token = await getToken()
-      if (!token) {
+      
+      if (!user) {
         setLoading(false)
         return
       }
+
+      const token = await getToken()
       
+      // Get enrolled students from MongoDB API
       const result = await getEnrolledStudents(token)
+      
+      console.log('📚 Enrolled students result:', result)
+      
       if (result.success) {
-        // Transform data to match expected format
-        const transformedData = result.enrollments.map(enrollment => ({
-          student: enrollment.studentId,
-          courseTitle: enrollment.courseId.courseTitle,
-          purchaseDate: enrollment.enrollmentDate
-        }))
-        setEnrolledStudents(transformedData)
+        // Transform data for display
+        const studentsData = result.enrollments.map(enrollment => {
+          // Handle both populated student object and student ID string
+          const studentData = typeof enrollment.studentId === 'object' 
+            ? enrollment.studentId 
+            : null
+          
+          const studentName = studentData?.name || enrollment.studentId || 'Unknown Student'
+          const studentEmail = studentData?.email || 'student@example.com'
+          const studentImage = studentData?.imageUrl || studentData?.image || 
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}`
+          
+          return {
+            _id: enrollment._id,
+            studentUserId: typeof enrollment.studentId === 'object' 
+              ? enrollment.studentId._id 
+              : enrollment.studentId,
+            courseId: enrollment.courseId._id,
+            courseTitle: enrollment.courseId.courseTitle,
+            enrolledAt: enrollment.enrolledAt,
+            enrollmentType: enrollment.enrollmentType,
+            progress: enrollment.progress,
+            student: {
+              name: String(studentName),
+              email: String(studentEmail),
+              imageUrl: String(studentImage)
+            }
+          }
+        })
+        
+        setEnrolledStudents(studentsData)
+        console.log('✅ Loaded enrolled students:', studentsData.length)
       } else {
-        console.error('Failed to fetch students:', result.message)
+        console.log('No enrolled students found')
+        setEnrolledStudents([])
       }
     } catch (error) {
       console.error('Error fetching students:', error)
+      toast.error('Failed to load enrolled students')
+      setEnrolledStudents([])
     } finally {
       setLoading(false)
     }
@@ -45,14 +83,18 @@ const StudentsEnrolled = () => {
     return <ImprovedLoading />
   }
   
-  return enrolledStudents ? (
+  return (
     <div className='min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 md:p-8'>
       {/* Header */}
       <div className='mb-8'>
-        <h1 className='text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2'>
-          Students Enrolled
-        </h1>
-        <p className='text-gray-600'>View all students enrolled in your courses</p>
+        <div className='flex justify-between items-center'>
+          <div>
+            <h1 className='text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2'>
+              Students Enrolled
+            </h1>
+            <p className='text-gray-600'>View all students enrolled in your courses</p>
+          </div>
+        </div>
       </div>
 
       {/* Students Table */}
@@ -64,6 +106,7 @@ const StudentsEnrolled = () => {
                 <th className='px-6 py-4 text-left text-sm font-semibold text-gray-700 hidden sm:table-cell'>#</th>
                 <th className='px-6 py-4 text-left text-sm font-semibold text-gray-700'>Student</th>
                 <th className='px-6 py-4 text-left text-sm font-semibold text-gray-700'>Course</th>
+                <th className='px-6 py-4 text-left text-sm font-semibold text-gray-700 hidden lg:table-cell'>Type</th>
                 <th className='px-6 py-4 text-left text-sm font-semibold text-gray-700 hidden sm:table-cell'>Enrolled Date</th>
                 <th className='px-6 py-4 text-left text-sm font-semibold text-gray-700 hidden md:table-cell'>Status</th>
               </tr>
@@ -92,12 +135,25 @@ const StudentsEnrolled = () => {
                   <td className='px-6 py-4'>
                     <span className='font-semibold text-gray-900 text-base'>{item.courseTitle}</span>
                   </td>
+                  <td className='px-6 py-4 hidden lg:table-cell'>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                      item.enrollmentType === 'creator' 
+                        ? 'bg-purple-100 text-purple-700'
+                        : item.enrollmentType === 'paid'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {item.enrollmentType === 'creator' ? '👨‍🏫 Creator' : 
+                       item.enrollmentType === 'paid' ? '💰 Paid' : 
+                       '🎁 Demo'}
+                    </span>
+                  </td>
                   <td className='px-6 py-4 hidden sm:table-cell'>
                     <div className='flex items-center gap-2 text-sm text-gray-600'>
                       <svg className='w-4 h-4 text-gray-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                         <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' />
                       </svg>
-                      {new Date(item.purchaseDate).toLocaleDateString('en-US', { 
+                      {new Date(item.enrolledAt).toLocaleDateString('en-US', { 
                         month: 'short', 
                         day: 'numeric', 
                         year: 'numeric' 
@@ -150,7 +206,7 @@ const StudentsEnrolled = () => {
         </div>
       )}
     </div>
-  ) : null
+  )
 }
 
 export default StudentsEnrolled

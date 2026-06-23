@@ -22,52 +22,65 @@ const MyCourses = () => {
     try {
       setLoading(true)
       
-      const token = await getToken()
-      if (!token || !user) {
+      if (!user) {
         setLoading(false)
         return
       }
       
-      // Get current user ID
-      const userId = user.id
-      const storageKey = `educatorCourses_${userId}`
-      
-      // Try API first (to get latest from MongoDB)
+      // 1. Try to fetch from MongoDB API first
       try {
-        const result = await getEducatorCourses(token)
-        if (result.success && result.courses) {
-          console.log('Loaded courses from API:', result.courses.length)
-          setCourses(result.courses)
+        const token = await getToken()
+        if (token) {
+          const result = await getEducatorCourses(token)
           
-          // Save to localStorage for offline access - user-specific
-          if (result.courses.length > 0) {
+          if (result.success && result.courses) {
+            console.log('☁️ Loaded educator courses from MongoDB:', result.courses.length)
+            setCourses(result.courses)
+            
+            // Save to LocalStorage for offline access
+            const storageKey = `educatorCourses_${user.id}`
             localStorage.setItem(storageKey, JSON.stringify(result.courses))
+            
+            // Also update globalCourses
+            const globalCourses = JSON.parse(localStorage.getItem('globalCourses') || '[]')
+            const existingIds = new Set(globalCourses.map(c => c._id))
+            
+            result.courses.forEach(course => {
+              if (!existingIds.has(course._id)) {
+                globalCourses.push(course)
+              } else {
+                // Update existing course
+                const index = globalCourses.findIndex(c => c._id === course._id)
+                if (index !== -1) {
+                  globalCourses[index] = course
+                }
+              }
+            })
+            
+            localStorage.setItem('globalCourses', JSON.stringify(globalCourses))
+            
+            setLoading(false)
+            return
           }
-          
-          setLoading(false)
-          return
         }
       } catch (apiError) {
-        console.log('API failed, trying localStorage:', apiError.message)
+        console.warn('⚠️ Could not fetch from MongoDB API, using LocalStorage:', apiError.message)
       }
       
-      // Fallback to localStorage if API fails
-      const savedCourses = localStorage.getItem(storageKey)
-      if (savedCourses) {
-        try {
-          const localCourses = JSON.parse(savedCourses)
-          console.log('Loaded courses from localStorage for user:', userId)
-          setCourses(localCourses)
-        } catch (error) {
-          console.error('Error parsing localStorage courses:', error)
-          setCourses([])
-        }
+      // 2. Fallback to LocalStorage if API fails
+      const storageKey = `educatorCourses_${user.id}`
+      const storedCourses = localStorage.getItem(storageKey)
+      
+      if (storedCourses) {
+        const parsedCourses = JSON.parse(storedCourses)
+        console.log('💾 Loaded courses from LocalStorage:', parsedCourses.length)
+        setCourses(parsedCourses)
       } else {
-        console.log('No courses found')
+        console.log('📦 No courses found in LocalStorage')
         setCourses([])
       }
     } catch (error) {
-      console.error('Error fetching courses:', error)
+      console.error('Error loading courses:', error)
       setCourses([])
     } finally {
       setLoading(false)
@@ -81,25 +94,35 @@ const MyCourses = () => {
 
     try {
       setDeleting(courseId)
-      const token = await getToken()
-      const result = await deleteCourse(token, courseId)
       
-      if (result.success) {
-        toast.success('Course deleted successfully!')
-        // Remove from list
-        const updatedCourses = courses.filter(c => c._id !== courseId)
+      if (!user) {
+        toast.error('User not found')
+        return
+      }
+      
+      // Delete from LocalStorage
+      const storageKey = `educatorCourses_${user.id}`
+      const storedCourses = localStorage.getItem(storageKey)
+      
+      if (storedCourses) {
+        const parsedCourses = JSON.parse(storedCourses)
+        const updatedCourses = parsedCourses.filter(c => c._id !== courseId)
+        
+        // Save back to LocalStorage
+        localStorage.setItem(storageKey, JSON.stringify(updatedCourses))
+        
+        // Also remove from globalCourses
+        const globalCourses = JSON.parse(localStorage.getItem('globalCourses') || '[]')
+        const updatedGlobalCourses = globalCourses.filter(c => c._id !== courseId)
+        localStorage.setItem('globalCourses', JSON.stringify(updatedGlobalCourses))
+        
+        // Update local state
         setCourses(updatedCourses)
         
-        // Update localStorage - user-specific
-        if (user) {
-          const storageKey = `educatorCourses_${user.id}`
-          localStorage.setItem(storageKey, JSON.stringify(updatedCourses))
-          
-          // Dispatch event to notify AppContext to reload courses
-          window.dispatchEvent(new Event('coursesUpdated'))
-        }
-      } else {
-        toast.error(result.message || 'Failed to delete course')
+        // Dispatch event to notify AppContext to reload courses
+        window.dispatchEvent(new Event('coursesUpdated'))
+        
+        toast.success('Course deleted successfully!')
       }
     } catch (error) {
       console.error('Error deleting course:', error)
@@ -197,28 +220,50 @@ const MyCourses = () => {
                       </span>
                     </td>
                     <td className='px-6 py-4'>
-                      <button
-                        onClick={() => handleDelete(course._id, course.courseTitle)}
-                        disabled={deleting === course._id}
-                        className='px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto'
-                      >
-                        {deleting === course._id ? (
-                          <>
-                            <svg className='animate-spin h-4 w-4' fill='none' viewBox='0 0 24 24'>
-                              <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4'></circle>
-                              <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
-                            </svg>
-                            Deleting...
-                          </>
-                        ) : (
-                          <>
-                            <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16' />
-                            </svg>
-                            Delete
-                          </>
-                        )}
-                      </button>
+                      <div className='flex gap-2 justify-center'>
+                        <button
+                          onClick={() => navigate(`/educator/edit-course/${course._id}`)}
+                          className='px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium text-sm transition-all flex items-center gap-2'
+                          title='Edit Course'
+                        >
+                          <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                            <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' />
+                          </svg>
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => navigate(`/educator/course/${course._id}/quizzes`)}
+                          className='px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium text-sm transition-all flex items-center gap-2'
+                          title='Manage Quizzes'
+                        >
+                          <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                            <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' />
+                          </svg>
+                          Quizzes
+                        </button>
+                        <button
+                          onClick={() => handleDelete(course._id, course.courseTitle)}
+                          disabled={deleting === course._id}
+                          className='px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2'
+                        >
+                          {deleting === course._id ? (
+                            <>
+                              <svg className='animate-spin h-4 w-4' fill='none' viewBox='0 0 24 24'>
+                                <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4'></circle>
+                                <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
+                              </svg>
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16' />
+                              </svg>
+                              Delete
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -2,7 +2,7 @@ import { useContext, useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { AppContext } from '../../context/AppContext'
 import { useAuth } from '@clerk/clerk-react'
-import { createPaymentOrder } from '../../utils/api'
+import { createPaymentOrder, checkEnrollmentStatus, enrollCourse } from '../../utils/api'
 import { toast } from 'react-toastify'
 import Loading from '../../components/students/Loading'
 import { assets } from '../../assets/assets'
@@ -52,17 +52,28 @@ const CourseDetails = () => {
     currency
   } = useContext(AppContext)
 
-  const fetchCourseData = useCallback(() => {
+  const fetchCourseData = useCallback(async () => {
     if (allCourses?.length) {
       const findCourse = allCourses.find(course => course._id === id)
       setCourseData(findCourse)
       
-      // Check if already enrolled
-      const enrollments = JSON.parse(localStorage.getItem('myEnrollments') || '[]')
-      const isEnrolled = enrollments.some(e => e.courseId === id)
-      setIsAlreadyEnrolled(isEnrolled)
+      // Check if already enrolled from MongoDB
+      if (userId) {
+        try {
+          const token = await getToken()
+          const result = await checkEnrollmentStatus(token, id)
+          
+          console.log('🔍 Enrollment check result:', result)
+          
+          if (result.success) {
+            setIsAlreadyEnrolled(result.isEnrolled)
+          }
+        } catch (error) {
+          console.error('Error checking enrollment:', error)
+        }
+      }
     }
-  }, [allCourses, id])
+  }, [allCourses, id, userId, getToken])
 
   useEffect(() => {
     fetchCourseData()
@@ -78,79 +89,42 @@ const CourseDetails = () => {
   const handleEnroll = async () => {
     try {
       setIsProcessing(true)
-      const token = await getToken()
       
-      if (!token) {
+      if (!userId) {
         toast.error('Please sign in to enroll')
         setIsProcessing(false)
         return
       }
 
+      const token = await getToken()
+      
       // Check if user is the course creator
-      if (courseData.educator === userId || courseData.educator?._id === userId) {
+      const isCreator = courseData.educator === userId || courseData.educator?._id === userId
+      
+      if (isCreator) {
         toast.info('You are the creator of this course - Free enrollment!')
-        setIsAlreadyEnrolled(true)
-        setIsProcessing(false)
-        
-        // Save enrollment to localStorage
-        const enrollments = JSON.parse(localStorage.getItem('myEnrollments') || '[]')
-        if (!enrollments.find(e => e.courseId === id)) {
-          enrollments.push({
-            courseId: id,
-            enrollmentDate: new Date().toISOString(),
-            status: 'active'
-          })
-          localStorage.setItem('myEnrollments', JSON.stringify(enrollments))
-          
-          // Trigger event to reload enrollments
-          window.dispatchEvent(new Event('enrollmentsUpdated'))
-        }
-        
-        setTimeout(() => {
-          navigate('/my-enrollments')
-        }, 1500)
-        return
       }
 
-      // Check if course exists in localStorage (demo mode)
-      if (!courseData.courseThumbnail || courseData.courseThumbnail.includes('youtube') || courseData.courseThumbnail.includes('unsplash')) {
-        // This is a localStorage course, use demo enrollment
-        toast.success('Demo enrollment successful! (No payment required)')
+      // Enroll via MongoDB API
+      const result = await enrollCourse(token, id, null, 0) // Free enrollment for now
+      
+      if (result.success) {
         setIsAlreadyEnrolled(true)
-        setIsProcessing(false)
+        toast.success('Enrolled successfully! Redirecting...')
         
-        // Save enrollment to localStorage
-        const enrollments = JSON.parse(localStorage.getItem('myEnrollments') || '[]')
-        if (!enrollments.find(e => e.courseId === id)) {
-          enrollments.push({
-            courseId: id,
-            enrollmentDate: new Date().toISOString(),
-            status: 'active'
-          })
-          localStorage.setItem('myEnrollments', JSON.stringify(enrollments))
-          
-          // Trigger event to reload enrollments
-          window.dispatchEvent(new Event('enrollmentsUpdated'))
-        }
+        // Trigger event to update AppContext
+        console.log('📢 Dispatching enrollmentsUpdated event')
+        window.dispatchEvent(new Event('enrollmentsUpdated'))
         
-        setTimeout(() => {
-          navigate('/my-enrollments')
-        }, 1500)
-        return
-      }
-
-      // Real payment for MongoDB courses
-      toast.info('Redirecting to payment...')
-      
-      const result = await createPaymentOrder(token, id)
-      
-      if (result.success && result.sessionUrl) {
-        // Redirect to Stripe checkout
-        window.location.href = result.sessionUrl
+        // Wait for event to be processed, then navigate
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        navigate('/my-enrollments')
       } else {
-        toast.error(result.message || 'Failed to create payment session')
-        setIsProcessing(false)
+        toast.error(result.message || 'Failed to enroll')
       }
+      
+      setIsProcessing(false)
     } catch (error) {
       console.error('Error enrolling:', error)
       toast.error('Failed to process enrollment')

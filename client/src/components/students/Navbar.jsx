@@ -12,6 +12,16 @@ const Navbar = () => {
 
   const {user} = useUser()
 
+  // Check if user is admin from LocalStorage (source of truth)
+  const getUserRole = () => {
+    if (!user) return 'student'
+    const allUsers = JSON.parse(localStorage.getItem('allRegisteredUsers') || '[]')
+    const userInStorage = allUsers.find(u => u.id === user.id)
+    return userInStorage?.role || user.unsafeMetadata?.role || user.publicMetadata?.role || 'student'
+  }
+  
+  const isAdmin = getUserRole() === 'admin'
+
   const handleBecomeEducator = async () => {
     if (isEducator) {
       navigate('/educator')
@@ -68,34 +78,85 @@ const Navbar = () => {
         // Show loading toast
         const loadingToast = document.createElement('div')
         loadingToast.className = 'fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-medium z-50 animate-fade-in-right bg-blue-500'
-        loadingToast.innerHTML = '<div class="flex items-center gap-2"><div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div><span>Processing...</span></div>'
+        loadingToast.innerHTML = '<div class="flex items-center gap-2"><div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div><span>Đang gửi yêu cầu...</span></div>'
         document.body.appendChild(loadingToast)
         
-        const result = await becomeEducator()
-        
-        // Remove loading toast
-        if (document.body.contains(loadingToast)) {
-          document.body.removeChild(loadingToast)
-        }
-        
-        // Wait a bit for backend to sync
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-        // Force reload profile
-        await fetchUserProfile()
-        
-        // Show success/error message
-        const toast = document.createElement('div')
-        toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-medium z-50 animate-fade-in-right ${
-          result.success ? 'bg-green-500' : 'bg-red-500'
-        }`
-        toast.textContent = result.message || (result.success ? 'Success!' : 'Failed')
-        document.body.appendChild(toast)
-        setTimeout(() => {
-          if (document.body.contains(toast)) {
-            document.body.removeChild(toast)
+        // Create educator request instead of immediate upgrade
+        try {
+          const requests = JSON.parse(localStorage.getItem('educatorRequests') || '[]')
+          
+          // Check if user already has a pending request
+          const existingRequest = requests.find(r => r.userId === user.id && r.status === 'pending')
+          
+          if (existingRequest) {
+            // Remove loading toast
+            if (document.body.contains(loadingToast)) {
+              document.body.removeChild(loadingToast)
+            }
+            
+            // Show warning message
+            const toast = document.createElement('div')
+            toast.className = 'fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-medium z-50 animate-fade-in-right bg-yellow-500'
+            toast.textContent = 'Bạn đã có yêu cầu đang chờ xử lý'
+            document.body.appendChild(toast)
+            setTimeout(() => {
+              if (document.body.contains(toast)) {
+                document.body.removeChild(toast)
+              }
+            }, 3000)
+            return
           }
-        }, 3000)
+          
+          // Create new request
+          const newRequest = {
+            id: Date.now().toString(),
+            userId: user.id,
+            userName: user.fullName || user.firstName || 'Unknown User',
+            userEmail: user.primaryEmailAddress?.emailAddress || 'unknown@example.com',
+            requestDate: new Date().toISOString(),
+            status: 'pending'
+          }
+          
+          requests.push(newRequest)
+          localStorage.setItem('educatorRequests', JSON.stringify(requests))
+          
+          // Dispatch event to notify admin dashboard
+          window.dispatchEvent(new Event('educatorRequestsUpdated'))
+          
+          // Remove loading toast
+          if (document.body.contains(loadingToast)) {
+            document.body.removeChild(loadingToast)
+          }
+          
+          // Show success message
+          const toast = document.createElement('div')
+          toast.className = 'fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-medium z-50 animate-fade-in-right bg-green-500'
+          toast.textContent = 'Yêu cầu đã được gửi, chờ admin phê duyệt'
+          document.body.appendChild(toast)
+          setTimeout(() => {
+            if (document.body.contains(toast)) {
+              document.body.removeChild(toast)
+            }
+          }, 3000)
+        } catch (error) {
+          console.error('Error creating educator request:', error)
+          
+          // Remove loading toast
+          if (document.body.contains(loadingToast)) {
+            document.body.removeChild(loadingToast)
+          }
+          
+          // Show error message
+          const toast = document.createElement('div')
+          toast.className = 'fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-medium z-50 animate-fade-in-right bg-red-500'
+          toast.textContent = 'Có lỗi xảy ra, vui lòng thử lại'
+          document.body.appendChild(toast)
+          setTimeout(() => {
+            if (document.body.contains(toast)) {
+              document.body.removeChild(toast)
+            }
+          }, 3000)
+        }
       }
 
       const handleCancel = () => {
@@ -120,8 +181,15 @@ const Navbar = () => {
 
               { user &&
               <>
+                {isAdmin && (
+                  <>
+                    <Link to='/admin' className='text-red-600 hover:text-red-700 font-medium'>Admin Panel</Link>
+                    |
+                  </>
+                )}
                 <button onClick={handleBecomeEducator}>{isEducator ? 'Educator Dashboard' : 'Become Educator'}</button>
                 | <Link to='/my-enrollments'>My Enrollments</Link>
+                | <Link to='/learning-analytics' className='text-purple-600 hover:text-purple-700 font-medium'>📊 Analytics</Link>
               </>
                 }
              </div>
@@ -141,8 +209,15 @@ const Navbar = () => {
           <div className='flex items-center gap-1 sm:gap-2 max-sm:text-xs'>
             { user &&
               <>
+                {isAdmin && (
+                  <>
+                    <Link to='/admin' className='text-red-600 hover:text-red-700 font-medium text-xs'>Admin</Link>
+                    |
+                  </>
+                )}
                 <button onClick={handleBecomeEducator}>{isEducator ? 'Educator Dashboard' : 'Become Educator'}</button>
                 | <Link to='/my-enrollments'>My Enrollments</Link>
+                | <Link to='/learning-analytics' className='text-purple-600'>📊</Link>
               </>
                 }
           </div>

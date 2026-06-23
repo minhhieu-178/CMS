@@ -1,49 +1,109 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useUser, useAuth } from '@clerk/clerk-react'
+import { addRating, getCourseRatings, updateRating } from '../../utils/api'
+import toast from 'react-hot-toast'
 
 const Rating = ({initialRating, onRate, courseId}) => {
-
+  const { user } = useUser()
+  const { getToken } = useAuth()
   const [rating, setRating] = useState(initialRating || 0)
+  const [userRating, setUserRating] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [hoveredStar, setHoveredStar] = useState(0)
 
-  // Load rating from localStorage on mount
+  // Load user's rating from MongoDB
   useEffect(() => {
-    if (courseId) {
-      const savedRating = localStorage.getItem(`rating_${courseId}`)
-      if (savedRating) {
-        setRating(Number(savedRating))
-      } else if (initialRating) {
-        setRating(initialRating)
-      }
-    } else if (initialRating) {
-      setRating(initialRating)
+    if (courseId && user) {
+      loadUserRating()
     }
-  }, [initialRating, courseId])
+  }, [courseId, user])
 
-  const handleRating = (value) => {
-    setRating(value)
-    
-    // Save to localStorage if courseId is provided
-    if (courseId) {
-      localStorage.setItem(`rating_${courseId}`, value.toString())
+  const loadUserRating = async () => {
+    try {
+      const result = await getCourseRatings(courseId)
+      if (result.success && result.ratings) {
+        const myRating = result.ratings.find(r => r.userId === user.id)
+        if (myRating) {
+          setRating(myRating.rating)
+          setUserRating(myRating.rating)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading rating:', error)
     }
-    
-    // Call parent callback if provided
-    if (onRate) {
-      onRate(value)
+  }
+
+  const handleRating = async (value) => {
+    if (!user) {
+      toast.error('Please sign in to rate this course')
+      return
+    }
+
+    if (!courseId) {
+      toast.error('Course ID is required')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const token = await getToken()
+      
+      let result
+      if (userRating > 0) {
+        // Update existing rating
+        result = await updateRating(token, courseId, value)
+      } else {
+        // Add new rating
+        result = await addRating(token, courseId, value)
+      }
+
+      if (result.success) {
+        setRating(value)
+        setUserRating(value)
+        toast.success(userRating > 0 ? 'Rating updated!' : 'Rating submitted!')
+        
+        // Call parent callback if provided
+        if (onRate) {
+          onRate(value)
+        }
+      } else {
+        toast.error(result.message || 'Failed to submit rating')
+      }
+    } catch (error) {
+      console.error('Error submitting rating:', error)
+      toast.error('Failed to submit rating')
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <div>
+    <div className='flex items-center gap-2'>
+      <div className='flex'>
         {Array.from({length: 5}, (_,index)=>{
           const starValue = index + 1;
+          const isActive = starValue <= (hoveredStar || rating)
+          
           return(
-            <span key={index} className={`text-xl sm:text-2xl cursor-pointer transition-colors ${starValue <= 
-            rating ? 'text-yellow-500' : 'text-gray-400'}`}
-            onClick={()=> handleRating(starValue)}>
+            <span 
+              key={index} 
+              className={`text-xl sm:text-2xl cursor-pointer transition-all transform hover:scale-110 ${
+                isActive ? 'text-yellow-500' : 'text-gray-300'
+              } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              onClick={() => !loading && handleRating(starValue)}
+              onMouseEnter={() => !loading && setHoveredStar(starValue)}
+              onMouseLeave={() => !loading && setHoveredStar(0)}
+            >
               &#9733;
             </span>
           )
         })}
+      </div>
+      {userRating > 0 && (
+        <span className='text-sm text-gray-600'>
+          (Your rating: {userRating}/5)
+        </span>
+      )}
     </div>
   )
 }

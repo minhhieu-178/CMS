@@ -3,11 +3,33 @@ import { useNavigate } from 'react-router-dom'
 import { useUser } from '@clerk/clerk-react'
 import { AppContext } from '../context/AppContext'
 
-const ProtectedRoute = ({ children, requireEducator = false }) => {
+const ProtectedRoute = ({ children, requireEducator = false, requireAdmin = false }) => {
   const { user, isLoaded } = useUser()
   const { isEducator, userRole } = useContext(AppContext)
   const navigate = useNavigate()
   const [checking, setChecking] = useState(true)
+
+  // Check role from multiple sources (LocalStorage is source of truth)
+  const getUserRole = () => {
+    if (!user) return 'guest'
+    
+    // Check LocalStorage first (source of truth)
+    const allUsers = JSON.parse(localStorage.getItem('allRegisteredUsers') || '[]')
+    const userInStorage = allUsers.find(u => u.id === user.id)
+    if (userInStorage?.role) {
+      console.log('🔑 Role from LocalStorage:', userInStorage.role)
+      return userInStorage.role
+    }
+    
+    // Fallback to Clerk metadata
+    const clerkRole = user.unsafeMetadata?.role || user.publicMetadata?.role || 'student'
+    console.log('🔑 Role from Clerk:', clerkRole)
+    return clerkRole
+  }
+
+  const currentRole = getUserRole()
+  const isAdmin = currentRole === 'admin'
+  const isEducatorRole = currentRole === 'educator' || isAdmin
 
   useEffect(() => {
     if (isLoaded) {
@@ -17,11 +39,28 @@ const ProtectedRoute = ({ children, requireEducator = false }) => {
         return
       }
 
-      // If educator route but user is not educator
-      if (requireEducator && !isEducator) {
-        console.log('Access denied: Educator role required. Current role:', userRole)
+      // If admin route but user is not admin
+      if (requireAdmin && !isAdmin) {
+        console.log('Access denied: Admin role required. Current role:', currentRole)
         
-        // Show toast notification instead of alert
+        const toast = document.createElement('div')
+        toast.className = 'fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-medium z-50 animate-fade-in-right bg-red-500'
+        toast.textContent = 'Bạn cần quyền Admin để truy cập trang này'
+        document.body.appendChild(toast)
+        setTimeout(() => {
+          if (document.body.contains(toast)) {
+            document.body.removeChild(toast)
+          }
+        }, 3000)
+        
+        navigate('/')
+        return
+      }
+
+      // If educator route but user is not educator (and not admin)
+      if (requireEducator && !isEducatorRole) {
+        console.log('Access denied: Educator role required. Current role:', currentRole)
+        
         const toast = document.createElement('div')
         toast.className = 'fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-medium z-50 animate-fade-in-right bg-red-500'
         toast.textContent = 'You need to be an educator to access this page'
@@ -38,7 +77,7 @@ const ProtectedRoute = ({ children, requireEducator = false }) => {
 
       setChecking(false)
     }
-  }, [user, isLoaded, isEducator, userRole, requireEducator, navigate])
+  }, [user, isLoaded, isEducator, userRole, requireEducator, requireAdmin, isAdmin, navigate])
 
   // Show loading while checking auth
   if (!isLoaded || checking) {
@@ -55,7 +94,7 @@ const ProtectedRoute = ({ children, requireEducator = false }) => {
   }
 
   // If not authenticated or not authorized, don't render children
-  if (!user || (requireEducator && !isEducator)) {
+  if (!user || (requireEducator && !isEducatorRole) || (requireAdmin && !isAdmin)) {
     return null
   }
 

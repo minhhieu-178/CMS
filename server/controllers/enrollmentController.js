@@ -2,10 +2,10 @@ import Enrollment from '../models/Enrollment.js'
 import Course from '../models/Course.js'
 import User from '../models/User.js'
 
-// Enroll in course
+// Enroll in course (free or creator)
 export const enrollCourse = async (req, res) => {
     try {
-        const { courseId, paymentId, amount } = req.body
+        const { courseId, paymentId, amount, enrollmentType = 'demo' } = req.body
         const studentId = req.auth.userId
 
         // Check if already enrolled
@@ -25,8 +25,9 @@ export const enrollCourse = async (req, res) => {
             studentId,
             courseId,
             paymentId,
-            amount,
-            status: 'active'
+            amount: amount || 0,
+            status: 'active',
+            enrollmentType
         })
 
         // Add to course enrolledStudents
@@ -110,6 +111,30 @@ export const markLectureComplete = async (req, res) => {
         await enrollment.save()
 
         res.json({ success: true, progress: enrollment.progress })
+    } catch (error) {
+        res.json({ success: false, message: error.message })
+    }
+}
+
+// Get my enrollments
+export const getMyEnrollments = async (req, res) => {
+    try {
+        const studentId = req.auth.userId
+
+        const enrollments = await Enrollment.find({ studentId })
+            .populate('courseId')
+            .sort({ enrolledAt: -1 })
+
+        // Map to include course data
+        const enrollmentsWithCourses = enrollments.map(enrollment => ({
+            ...enrollment.toObject(),
+            course: enrollment.courseId
+        }))
+
+        res.json({ 
+            success: true, 
+            enrollments: enrollmentsWithCourses 
+        })
     } catch (error) {
         res.json({ success: false, message: error.message })
     }

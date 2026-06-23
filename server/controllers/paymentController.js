@@ -1,6 +1,7 @@
 import Stripe from 'stripe'
 import Payment from '../models/Payment.js'
 import Course from '../models/Course.js'
+import Enrollment from '../models/Enrollment.js'
 
 const stripe = process.env.STRIPE_SECRET_KEY 
     ? new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -85,18 +86,40 @@ export const verifyPayment = async (req, res) => {
     if (event.type === 'checkout.session.completed') {
         const session = event.data.object
 
-        // Update payment status
-        await Payment.findOneAndUpdate(
+        // Find the payment record
+        const payment = await Payment.findOneAndUpdate(
             { orderId: session.id },
             { 
                 status: 'completed',
                 paymentId: session.payment_intent,
                 transactionDate: new Date()
-            }
+            },
+            { new: true }
         )
 
-        // Auto-enroll student (this should trigger enrollment controller)
-        // Or handle enrollment here directly
+        if (payment) {
+            // Auto-enroll student after successful payment
+            try {
+                const existingEnrollment = await Enrollment.findOne({
+                    studentId: payment.studentId,
+                    courseId: payment.courseId
+                })
+
+                if (!existingEnrollment) {
+                    const enrollment = new Enrollment({
+                        studentId: payment.studentId,
+                        courseId: payment.courseId,
+                        paymentId: payment._id,
+                        amount: payment.amount,
+                        enrollmentType: 'Paid'
+                    })
+                    await enrollment.save()
+                    console.log('✅ Auto-enrolled student after payment:', enrollment._id)
+                }
+            } catch (error) {
+                console.error('❌ Error auto-enrolling student:', error)
+            }
+        }
     }
 
     res.json({ received: true })

@@ -29,15 +29,33 @@ export const addCourse = async (req, res)=>{
         const imageFile = req.file
         const educatorId = req.auth.userId
 
-        if(!imageFile){
-            return res.json({ success: false, message: 'Thumbnail Not Attached'})
+        if (!educatorId) {
+            return res.json({ success: false, message: 'Authentication required' })
         }
 
-        const parsedCourseData = JSON.parse(courseData)
+        let parsedCourseData
+
+        // Check if courseData is already an object (from migration) or string (from form)
+        if (typeof courseData === 'string') {
+            parsedCourseData = JSON.parse(courseData)
+        } else {
+            parsedCourseData = courseData
+        }
+
+        // Always use authenticated user as educator (security)
         parsedCourseData.educator = educatorId
-        
-        const imageUpload = await cloudinary.uploader.upload(imageFile.path)
-        parsedCourseData.courseThumbnail = imageUpload.secure_url
+
+        // Handle thumbnail - either upload new file or use existing URL
+        if (imageFile) {
+            // New upload from form
+            const imageUpload = await cloudinary.uploader.upload(imageFile.path)
+            parsedCourseData.courseThumbnail = imageUpload.secure_url
+        } else if (parsedCourseData.courseThumbnail) {
+            // Use existing URL (from migration or direct URL)
+            // Keep the existing thumbnail URL
+        } else {
+            return res.json({ success: false, message: 'Thumbnail Not Attached'})
+        }
         
         const newCourse = await Course.create(parsedCourseData)
         
@@ -51,6 +69,7 @@ export const addCourse = async (req, res)=>{
         })
 
     } catch (error) {
+        console.error('Error adding course:', error)
         res.json({ success: false, message: error.message })
     }
 }

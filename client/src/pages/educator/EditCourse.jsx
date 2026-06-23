@@ -3,26 +3,31 @@ import Quill from 'quill';
 import { assets } from '../../assets/assets';
 import { AppContext } from '../../context/AppContext';
 import { useAuth, useUser } from '@clerk/clerk-react';
-import { addCourse } from '../../utils/api';
+import { updateCourse, getCourseDetails } from '../../utils/api';
 import { toast } from 'react-toastify';
+import { useParams } from 'react-router-dom';
+import ImprovedLoading from '../../components/students/ImprovedLoading';
 
 // Simple unique ID generator for browser
 const generateId = () => {
   return Date.now().toString(36) + Math.random().toString(36).substring(2);
 };
 
-const AddCourse = () => {
+const EditCourse = () => {
 
+  const { courseId } = useParams();
   const quillRef = useRef(null);
   const editorRef = useRef(null);
   const { navigate } = useContext(AppContext);
   const { getToken } = useAuth();
   const { user } = useUser();
 
+  const [loading, setLoading] = useState(true);
   const [courseTitle, setCourseTitle] = useState('')
   const [coursePrice, setCoursePrice] = useState(0)
   const [discount, setDiscount] = useState(0)
   const [image, setImage] = useState(null)
+  const [existingThumbnail, setExistingThumbnail] = useState('')
   const [chapters, setChapters] = useState([]);
   const [showPopup, setShowPopup] = useState(false);
   const [currentChapterId, setCurrentChapterId] = useState(null);
@@ -37,6 +42,63 @@ const AddCourse = () => {
     }
   )
 
+  useEffect(() => {
+    loadCourseData();
+  }, [courseId]);
+
+  const loadCourseData = async () => {
+    try {
+      setLoading(true);
+      
+      // Try to load from localStorage first
+      if (user) {
+        const storageKey = `educatorCourses_${user.id}`;
+        const storedCourses = localStorage.getItem(storageKey);
+        
+        if (storedCourses) {
+          const courses = JSON.parse(storedCourses);
+          const course = courses.find(c => c._id === courseId);
+          
+          if (course) {
+            populateCourseData(course);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+      
+      // If not in localStorage, fetch from API
+      const result = await getCourseDetails(courseId);
+      if (result.success) {
+        populateCourseData(result.course);
+      } else {
+        toast.error('Failed to load course');
+        navigate('/educator/my-courses');
+      }
+    } catch (error) {
+      console.error('Error loading course:', error);
+      toast.error('Failed to load course');
+      navigate('/educator/my-courses');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const populateCourseData = (course) => {
+    setCourseTitle(course.courseTitle || '');
+    setCoursePrice(course.coursePrice || 0);
+    setDiscount(course.discount || 0);
+    setExistingThumbnail(course.courseThumbnail || '');
+    setChapters(course.courseContent || []);
+    
+    // Set description in Quill editor after a short delay to ensure it's initialized
+    setTimeout(() => {
+      if (quillRef.current && course.courseDescription) {
+        quillRef.current.root.innerHTML = course.courseDescription;
+      }
+    }, 100);
+  };
+
   const handleChapter = (action, chapterId) => {
     if (action === 'add') {
       const title = prompt('Enter Chapter Name:');
@@ -46,8 +108,7 @@ const AddCourse = () => {
           chapterTitle: title,
           chapterContent: [],
           collapsed: false,
-          chapterOrder: chapters.length > 0 ? chapters.slice(-1)[0].chapterOrder +
-          1 : 1,
+          chapterOrder: chapters.length > 0 ? chapters.slice(-1)[0].chapterOrder + 1 : 1,
         };
         setChapters([...chapters, newChapter]);
       }
@@ -56,8 +117,7 @@ const AddCourse = () => {
     } else if (action === 'toggle') {
       setChapters(
         chapters.map((chapter)=> 
-          chapter.chapterId === chapterId ? { ...chapter, collapsed: !chapter.
-          collapsed } : chapter
+          chapter.chapterId === chapterId ? { ...chapter, collapsed: !chapter.collapsed } : chapter
         )
       );
     }
@@ -85,8 +145,7 @@ const AddCourse = () => {
         if(chapter.chapterId === currentChapterId) {
           const newLecture = {
             ...lectureDetails,
-            lectureOrder: chapter.chapterContent.length > 0 ? chapter.
-            chapterContent.slice(-1)[0].lectureOrder + 1 : 1,
+            lectureOrder: chapter.chapterContent.length > 0 ? chapter.chapterContent.slice(-1)[0].lectureOrder + 1 : 1,
             lectureId: generateId()
           };
           chapter.chapterContent.push(newLecture);
@@ -105,8 +164,6 @@ const AddCourse = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
-    console.log('=== Starting course submission ===')
     
     // Validation
     if (!courseTitle.trim()) {
@@ -130,7 +187,7 @@ const AddCourse = () => {
       return
     }
     
-    if (!image) {
+    if (!image && !existingThumbnail) {
       toast.error('Please upload course thumbnail')
       return
     }
@@ -147,14 +204,11 @@ const AddCourse = () => {
       return
     }
     
-    console.log('=== Validation passed ===')
-    
     try {
       setIsSubmitting(true)
-      toast.info('Uploading course to server...')
+      toast.info('Updating course...')
       
       const token = await getToken()
-      console.log('Token:', token ? 'Got token' : 'No token')
       
       if (!token) {
         toast.error('Please sign in to continue')
@@ -171,57 +225,41 @@ const AddCourse = () => {
         isPublished: true
       }
       
-      console.log('Course data:', courseData)
-      console.log('Image file:', image)
+      // If no new image, keep existing thumbnail
+      if (!image && existingThumbnail) {
+        courseData.courseThumbnail = existingThumbnail;
+      }
       
-      // Call API to upload to MongoDB + Cloudinary
-      const result = await addCourse(token, courseData, image)
-      
-      console.log('API result:', result)
-      console.log('API result success:', result.success)
-      console.log('API result message:', result.message)
-      console.log('API result course:', result.course)
+      // Call API to update course
+      const result = await updateCourse(token, courseId, courseData, image)
       
       if (result.success) {
-        console.log('✅ Course created with thumbnail:', result.course?.courseThumbnail)
-        toast.success('Course created successfully!')
+        toast.success('Course updated successfully!')
         
-        if (!user) {
-          toast.error('User not found')
-          return
-        }
-        
-        // Save to localStorage for immediate display - user-specific
-        const storageKey = `educatorCourses_${user.id}`
-        const savedCourses = localStorage.getItem(storageKey)
-        let educatorCoursesFromStorage = []
-        
-        if (savedCourses) {
-          try {
-            educatorCoursesFromStorage = JSON.parse(savedCourses)
-          } catch (error) {
-            console.error('Error loading educator courses:', error)
+        // Update localStorage
+        if (user) {
+          const storageKey = `educatorCourses_${user.id}`;
+          const storedCourses = localStorage.getItem(storageKey);
+          
+          if (storedCourses) {
+            let courses = JSON.parse(storedCourses);
+            const index = courses.findIndex(c => c._id === courseId);
+            
+            if (index !== -1) {
+              // Update the course in the array
+              courses[index] = {
+                ...courses[index],
+                ...courseData,
+                _id: courseId,
+                courseThumbnail: image ? result.course?.courseThumbnail : existingThumbnail
+              };
+              
+              localStorage.setItem(storageKey, JSON.stringify(courses));
+              
+              // Dispatch event to notify AppContext
+              window.dispatchEvent(new Event('coursesUpdated'));
+            }
           }
-        }
-        
-        // Add the new course - it already has educator populated from backend
-        educatorCoursesFromStorage.push(result.course)
-        localStorage.setItem(storageKey, JSON.stringify(educatorCoursesFromStorage))
-        
-        console.log('Course saved to localStorage for user:', user.id)
-        console.log('Thumbnail URL:', result.course?.courseThumbnail)
-        
-        // Dispatch event to notify AppContext to reload courses
-        window.dispatchEvent(new Event('coursesUpdated'))
-        
-        // Reset form
-        setCourseTitle('')
-        setCoursePrice(0)
-        setDiscount(0)
-        setImage(null)
-        setChapters([])
-        if (quillRef.current) {
-          quillRef.current.root.innerHTML = ''
         }
         
         // Navigate to My Courses
@@ -229,12 +267,11 @@ const AddCourse = () => {
           navigate('/educator/my-courses')
         }, 1000)
       } else {
-        console.error('❌ Failed to create course:', result.message)
-        toast.error(result.message || 'Failed to create course')
+        toast.error(result.message || 'Failed to update course')
       }
     } catch (error) {
-      console.error('Error creating course:', error)
-      toast.error('Failed to create course. Please try again.')
+      console.error('Error updating course:', error)
+      toast.error('Failed to update course. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -258,12 +295,42 @@ const AddCourse = () => {
     }
   }, [])
 
+  // Separate effect to populate description after Quill is ready
+  useEffect(() => {
+    if (quillRef.current && !loading) {
+      // Load course data from localStorage
+      if (user) {
+        const storageKey = `educatorCourses_${user.id}`;
+        const storedCourses = localStorage.getItem(storageKey);
+        
+        if (storedCourses) {
+          const courses = JSON.parse(storedCourses);
+          const course = courses.find(c => c._id === courseId);
+          
+          if (course && course.courseDescription) {
+            quillRef.current.root.innerHTML = course.courseDescription;
+          }
+        }
+      }
+    }
+  }, [loading, user, courseId])
+
+  if (loading) {
+    return <ImprovedLoading />
+  }
+
   return (
     <div className='h-screen overflow-scroll md:p-8 md:pb-0 p-4 pt-8 pb-0'>
       <div className='flex gap-8 max-w-7xl mx-auto'>
         {/* Form Section */}
-        <form onSubmit={handleSubmit} 
-        className='flex flex-col gap-4 w-full md:w-1/2 text-gray-500'>
+        <div className='w-full md:w-1/2'>
+          <div className='mb-4'>
+            <h1 className='text-3xl font-bold text-gray-800'>Edit Course</h1>
+            <p className='text-gray-600'>Update your course information</p>
+          </div>
+          
+          <form onSubmit={handleSubmit} 
+          className='flex flex-col gap-4 text-gray-500'>
         <div className='flex flex-col gap-1'>
           <p>Course Title</p>
           <input onChange={e => setCourseTitle(e.target.value)} value={courseTitle} type="text"
@@ -290,7 +357,11 @@ const AddCourse = () => {
               <img src={assets.file_upload_icon} alt='' className='p-3 bg-blue-500 rounded'/>
               <input type="file" id='thumbnailImage' onChange={e => setImage(e.target.files[0])}
               accept='image/*' hidden />
-              {image && <img className='max-h-10' src={URL.createObjectURL(image)} alt="thumbnail preview" />}
+              {image ? (
+                <img className='max-h-10' src={URL.createObjectURL(image)} alt="thumbnail preview" />
+              ) : existingThumbnail ? (
+                <img className='max-h-10' src={existingThumbnail} alt="current thumbnail" />
+              ) : null}
             </label>
           </div>
         </div>
@@ -404,15 +475,25 @@ const AddCourse = () => {
           )
           }
         </div>
-        <button 
-          type='submit' 
-          disabled={isSubmitting}
-          className={`${isSubmitting ? 'bg-gray-400' : 'bg-black'} text-white w-max py-2.5 px-8
-          rounded my-4 transition-colors`}
-        >
-          {isSubmitting ? 'UPLOADING...' : 'ADD'}
-        </button>
+        <div className='flex gap-4'>
+          <button 
+            type='submit' 
+            disabled={isSubmitting}
+            className={`${isSubmitting ? 'bg-gray-400' : 'bg-black'} text-white w-max py-2.5 px-8
+            rounded my-4 transition-colors`}
+          >
+            {isSubmitting ? 'UPDATING...' : 'UPDATE'}
+          </button>
+          <button 
+            type='button'
+            onClick={() => navigate('/educator/my-courses')}
+            className='bg-gray-500 text-white w-max py-2.5 px-8 rounded my-4 hover:bg-gray-600 transition-colors'
+          >
+            CANCEL
+          </button>
+        </div>
       </form>
+      </div>
 
       {/* Preview Section */}
       <div className='hidden md:block w-1/2 sticky top-8 h-fit'>
@@ -429,6 +510,12 @@ const AddCourse = () => {
                 {image ? (
                   <img 
                     src={URL.createObjectURL(image)} 
+                    alt="Course thumbnail" 
+                    className='w-full h-full object-cover'
+                  />
+                ) : existingThumbnail ? (
+                  <img 
+                    src={existingThumbnail} 
                     alt="Course thumbnail" 
                     className='w-full h-full object-cover'
                   />
@@ -542,4 +629,4 @@ const AddCourse = () => {
   )
 }
 
-export default AddCourse
+export default EditCourse

@@ -8,6 +8,10 @@ import studentRouter from './routes/studentRoutes.js'
 import enrollmentRouter from './routes/enrollmentRoutes.js'
 import ratingRouter from './routes/ratingRoutes.js'
 import paymentRouter from './routes/paymentRoutes.js'
+import quizRouter from './routes/quizRoutes.js'
+import personalizationRouter from './routes/personalizationRoutes.js'
+import migrationRouter from './routes/migrationRoutes.js'
+import adminRouter from './routes/adminRoutes.js'
 import { clerkMiddleware } from '@clerk/express'
 import connectCloudinary from './configs/cloudinary.js'
 
@@ -66,6 +70,10 @@ app.use('/api/student', studentRouter)
 app.use('/api/enrollment', enrollmentRouter)
 app.use('/api/ratings', ratingRouter)
 app.use('/api/payment', paymentRouter)
+app.use('/api/quiz', quizRouter)
+app.use('/api/personalization', personalizationRouter)
+app.use('/api/migration', migrationRouter)
+app.use('/api/admin', adminRouter)
 
 //PORT
 const PORT = process.env.PORT || 5000
