@@ -1,5 +1,5 @@
 import express from 'express'
-import { enrollCourse, checkEnrollmentStatus, getCourseProgress, markLectureComplete, getMyEnrollments } from '../controllers/enrollmentController.js'
+import { enrollCourse, checkEnrollmentStatus, getCourseProgress, markLectureComplete, getMyEnrollments, migrateEnrollmentsToAnalytics } from '../controllers/enrollmentController.js'
 import { requireAuth } from '../middlewares/authMiddleware.js'
 
 const enrollmentRouter = express.Router()
@@ -11,5 +11,8 @@ enrollmentRouter.get('/status/:courseId', requireAuth, checkEnrollmentStatus)
 enrollmentRouter.get('/progress/:courseId', requireAuth, getCourseProgress)
 enrollmentRouter.post('/mark-complete', requireAuth, markLectureComplete)
 enrollmentRouter.get('/my-enrollments', requireAuth, getMyEnrollments)
+
+// Migration endpoint (admin only - consider adding admin middleware in production)
+enrollmentRouter.post('/migrate-to-analytics', requireAuth, migrateEnrollmentsToAnalytics)
 
 export default enrollmentRouter

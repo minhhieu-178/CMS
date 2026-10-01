@@ -25,9 +25,12 @@ import DebugQuizzes from './pages/educator/DebugQuizzes'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminSetup from './pages/admin/AdminSetup'
 import DebugLocalStorage from './pages/DebugLocalStorage'
+import DebugUserId from './pages/DebugUserId'
+import DebugSystem from './pages/DebugSystem'
 import UserManagement from './pages/admin/UserManagement'
 import CourseManagement from './pages/admin/CourseManagement'
 import Analytics from './pages/admin/Analytics'
+import MigrateAnalytics from './pages/admin/MigrateAnalytics'
 import Navbar from './components/students/Navbar'
 import SignIn from './pages/auth/SignIn'
 import SignUp from './pages/auth/SignUp'
@@ -115,6 +118,8 @@ const App = () => {
         
         {/* Debug LocalStorage */}
         <Route path='/debug-localstorage' element={<DebugLocalStorage/>}/>
+        <Route path='/debug-userid' element={<DebugUserId/>}/>
+        <Route path='/debug-system' element={<DebugSystem/>}/>
         
         {/* Admin Routes */}
         <Route path='/admin' element={
@@ -135,6 +140,11 @@ const App = () => {
         <Route path='/admin/analytics' element={
           <ProtectedRoute requireAdmin={true}>
             <Analytics/>
+          </ProtectedRoute>
+        }/>
+        <Route path='/admin/migrate-analytics' element={
+          <ProtectedRoute requireAdmin={true}>
+            <MigrateAnalytics/>
           </ProtectedRoute>
         }/>
       </Routes>

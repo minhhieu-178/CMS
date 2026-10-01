@@ -1,6 +1,7 @@
 import Enrollment from '../models/Enrollment.js'
 import Course from '../models/Course.js'
 import User from '../models/User.js'
+import LearningAnalytics from '../models/LearningAnalytics.js'
 
 // Enroll in course (free or creator)
 export const enrollCourse = async (req, res) => {
@@ -39,6 +40,37 @@ export const enrollCourse = async (req, res) => {
         await User.findByIdAndUpdate(studentId, {
             $addToSet: { enrolledCourses: courseId }
         })
+
+        // Create initial LearningAnalytics record
+        try {
+            await LearningAnalytics.create({
+                userId: studentId,
+                courseId,
+                progress: {
+                    completedLectures: [],
+                    overallProgress: 0,
+                    lastAccessedDate: new Date()
+                },
+                learningPattern: {
+                    averageQuizScore: 0,
+                    totalQuizzesTaken: 0,
+                    quizRetakeCount: 0,
+                    weakTopics: [],
+                    strongTopics: [],
+                    learningLevel: 'beginner'
+                },
+                recommendations: {
+                    suggestedCourses: [],
+                    nextLessons: [],
+                    reviewTopics: [],
+                    lastUpdated: new Date()
+                }
+            })
+            console.log('✅ Created initial LearningAnalytics for user:', studentId)
+        } catch (analyticsError) {
+            // If analytics already exists (edge case), just log warning
+            console.log('⚠️ LearningAnalytics may already exist:', analyticsError.message)
+        }
 
         res.json({ success: true, message: 'Enrolled successfully', enrollment })
     } catch (error) {
@@ -136,6 +168,83 @@ export const getMyEnrollments = async (req, res) => {
             enrollments: enrollmentsWithCourses 
         })
     } catch (error) {
+        res.json({ success: false, message: error.message })
+    }
+}
+
+// Migrate existing enrollments to LearningAnalytics (one-time migration)
+export const migrateEnrollmentsToAnalytics = async (req, res) => {
+    try {
+        console.log('🔄 Starting enrollment to analytics migration...')
+        
+        // Get all enrollments
+        const allEnrollments = await Enrollment.find({})
+        console.log(`📚 Found ${allEnrollments.length} total enrollments`)
+        
+        let created = 0
+        let skipped = 0
+        let errors = 0
+        
+        for (const enrollment of allEnrollments) {
+            try {
+                // Check if LearningAnalytics already exists
+                const existing = await LearningAnalytics.findOne({
+                    userId: enrollment.studentId,
+                    courseId: enrollment.courseId
+                })
+                
+                if (existing) {
+                    skipped++
+                    continue
+                }
+                
+                // Create new LearningAnalytics
+                await LearningAnalytics.create({
+                    userId: enrollment.studentId,
+                    courseId: enrollment.courseId,
+                    progress: {
+                        completedLectures: enrollment.progress?.lecturesCompleted || [],
+                        overallProgress: enrollment.progress?.completionPercentage || 0,
+                        lastAccessedDate: enrollment.progress?.lastAccessedDate || enrollment.enrollmentDate || new Date()
+                    },
+                    learningPattern: {
+                        averageQuizScore: 0,
+                        totalQuizzesTaken: 0,
+                        quizRetakeCount: 0,
+                        weakTopics: [],
+                        strongTopics: [],
+                        learningLevel: 'beginner'
+                    },
+                    recommendations: {
+                        suggestedCourses: [],
+                        nextLessons: [],
+                        reviewTopics: [],
+                        lastUpdated: new Date()
+                    }
+                })
+                
+                created++
+                console.log(`✅ Created analytics for user ${enrollment.studentId}, course ${enrollment.courseId}`)
+                
+            } catch (error) {
+                errors++
+                console.error(`❌ Error processing enrollment ${enrollment._id}:`, error.message)
+            }
+        }
+        
+        console.log('✅ Migration complete!')
+        console.log(`   Created: ${created}`)
+        console.log(`   Skipped (already exists): ${skipped}`)
+        console.log(`   Errors: ${errors}`)
+        
+        res.json({
+            success: true,
+            message: 'Migration completed',
+            stats: { created, skipped, errors, total: allEnrollments.length }
+        })
+        
+    } catch (error) {
+        console.error('❌ Migration failed:', error)
         res.json({ success: false, message: error.message })
     }
 }

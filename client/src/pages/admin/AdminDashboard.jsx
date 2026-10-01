@@ -287,6 +287,20 @@ const AdminDashboard = () => {
           </div>
         </div>
 
+        {/* Data Migration Tools */}
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Công Cụ Quản Trị</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <QuickAction
+              icon={TrendingUp}
+              title="Migrate Analytics"
+              description="Tạo LearningAnalytics cho enrollments"
+              onClick={() => navigate('/admin/migrate-analytics')}
+              color="#EC4899"
+            />
+          </div>
+        </div>
+
         {/* Recent Activity */}
         <div className="bg-white rounded-lg shadow-md">
           <div className="px-6 py-4 border-b border-gray-200">

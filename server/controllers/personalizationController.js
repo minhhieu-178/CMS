@@ -91,12 +91,15 @@ export const getAllUserAnalytics = async (req, res) => {
     const userId = req.auth.userId;
     
     console.log('📊 Loading analytics for user:', userId);
+    console.log('🔑 Full req.auth:', req.auth);
     
     const allAnalytics = await LearningAnalytics.find({ userId })
       .populate('courseId') // Populate all course fields including courseContent
       .populate('recommendations.suggestedCourses', 'courseTitle courseThumbnail coursePrice courseDescription courseRatings enrolledStudents educator');
     
     console.log('📚 Found', allAnalytics.length, 'enrolled courses');
+    console.log('🔍 First analytics userId:', allAnalytics[0]?.userId);
+    console.log('🔍 Requested userId:', userId);
     
     // Recalculate progress for each course with quiz validation
     const Quiz = (await import('../models/Quiz.js')).default;
