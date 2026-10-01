@@ -114,7 +114,7 @@ export const verifyPayment = async (req, res) => {
                         enrollmentType: 'Paid'
                     })
                     await enrollment.save()
-                    console.log('✅ Auto-enrolled student after payment:', enrollment._id)
+                    console.log('Auto-enrolled student after payment:', enrollment._id)
                 }
             } catch (error) {
                 console.error('❌ Error auto-enrolling student:', error)

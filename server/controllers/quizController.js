@@ -5,7 +5,7 @@ import PersonalizationService from '../services/personalizationService.js'
 // Create Quiz (Educator only)
 export const createQuiz = async (req, res) => {
   try {
-    console.log('📝 Creating quiz with body:', req.body)
+    console.log('Creating quiz with body:', req.body)
     const { courseId, chapterIndex, lectureIndex, title, description, questions, settings } = req.body
     const userId = req.auth.userId
 
@@ -27,11 +27,11 @@ export const createQuiz = async (req, res) => {
     })
 
     await quiz.save()
-    console.log('✅ Quiz created successfully with ID:', quiz._id)
+    console.log('Quiz created successfully with ID:', quiz._id)
 
     res.json({ success: true, message: 'Quiz created successfully', quiz })
   } catch (error) {
-    console.error('❌ Error creating quiz:', error)
+    console.error('Error creating quiz:', error)
     res.json({ success: false, message: error.message })
   }
 }
@@ -82,7 +82,7 @@ export const getQuiz = async (req, res) => {
 
     // If user hasn't passed and reached max attempts
     if (attemptCount >= quiz.settings.maxAttempts) {
-      console.log('❌ Maximum attempts reached without passing')
+      console.log('Maximum attempts reached without passing')
       return res.json({ 
         success: false, 
         message: `Maximum attempts reached. You have used all ${quiz.settings.maxAttempts} attempts without passing.`,
@@ -92,7 +92,7 @@ export const getQuiz = async (req, res) => {
       })
     }
 
-    console.log('✅ User can take quiz, loading questions...')
+    console.log('User can take quiz, loading questions...')
 
     // Remove correct answers from questions (don't send to client)
     const quizData = quiz.toObject()
@@ -185,12 +185,12 @@ export const submitQuizAttempt = async (req, res) => {
       })
     }
 
-    console.log('✅ Submission allowed, attempt number:', attemptNumber)
+    console.log('Submission allowed, attempt number:', attemptNumber)
 
     // Grade the quiz
-    console.log('🎓 Starting to grade quiz:', quizId)
-    console.log('📝 Total questions:', quiz.questions.length)
-    console.log('📋 User submitted answers:', answers.length)
+    console.log('Starting to grade quiz:', quizId)
+    console.log('Total questions:', quiz.questions.length)
+    console.log('User submitted answers:', answers.length)
     
     const gradedAnswers = []
     let totalPoints = 0
@@ -235,12 +235,12 @@ export const submitQuizAttempt = async (req, res) => {
         if (isCorrect) {
           pointsEarned = question.points
           earnedPoints += pointsEarned
-          console.log('✅ Points earned:', pointsEarned)
+          console.log('Points earned:', pointsEarned)
         } else {
-          console.log('❌ No points earned')
+          console.log('No points earned')
         }
       } else {
-        console.log('⚠️ No answer submitted for this question')
+        console.log('No answer submitted for this question')
       }
 
       gradedAnswers.push({
@@ -260,7 +260,7 @@ export const submitQuizAttempt = async (req, res) => {
     console.log('Passing Score Required:', quiz.settings.passingScore + '%')
     
     const passed = percentage >= quiz.settings.passingScore
-    console.log('Passed?', passed ? '✅ YES' : '❌ NO')
+    console.log('Passed?', passed ? 'YES' : 'NO')
     console.log('=======================\n')
 
     const submittedAt = new Date()
@@ -372,7 +372,7 @@ export const getCourseAttempts = async (req, res) => {
       userId 
     }).select('quizId userId score totalPoints percentage passed attemptNumber submittedAt')
 
-    console.log(`📊 Found ${attempts.length} attempts for course ${courseId}, user ${userId}`)
+    console.log(`Found ${attempts.length} attempts for course ${courseId}, user ${userId}`)
 
     res.json({ success: true, attempts })
   } catch (error) {
@@ -414,7 +414,7 @@ export const getAttemptDetails = async (req, res) => {
                            quiz.settings.deadline && 
                            new Date() > quiz.settings.deadline)
 
-    console.log('📋 Attempt Details:', {
+    console.log('Attempt Details:', {
       attemptId: attempt._id,
       quizId: attempt.quizId,
       attemptNumber: attempt.attemptNumber,
@@ -453,8 +453,8 @@ export const getStudentQuizzes = async (req, res) => {
     const { courseId } = req.params
     const userId = req.auth.userId
 
-    console.log('📚 Student requesting quizzes for course:', courseId)
-    console.log('👤 User ID:', userId)
+    console.log('Student requesting quizzes for course:', courseId)
+    console.log('User ID:', userId)
 
     if (!userId) {
       return res.json({ success: false, message: 'Unauthorized' })
@@ -466,7 +466,7 @@ export const getStudentQuizzes = async (req, res) => {
       isActive: true 
     }).sort({ chapterIndex: 1, lectureIndex: 1 })
 
-    console.log('✅ Found quizzes for students:', quizzes.length)
+    console.log('Found quizzes for students:', quizzes.length)
 
     // Return quiz metadata (don't send actual questions to client yet)
     const sanitizedQuizzes = quizzes.map(quiz => ({
@@ -491,7 +491,7 @@ export const getStudentQuizzes = async (req, res) => {
 
     res.json({ success: true, quizzes: sanitizedQuizzes })
   } catch (error) {
-    console.error('❌ Error getting student quizzes:', error)
+    console.error('Error getting student quizzes:', error)
     res.json({ success: false, message: error.message })
   }
 }
@@ -499,7 +499,7 @@ export const getStudentQuizzes = async (req, res) => {
 // Get Quizzes by Course (Educator)
 export const getCourseQuizzes = async (req, res) => {
   try {
-    console.log('📚 Getting quizzes for course:', req.params.courseId)
+    console.log('Getting quizzes for course:', req.params.courseId)
     const { courseId } = req.params
     const userId = req.auth.userId
 
@@ -512,12 +512,12 @@ export const getCourseQuizzes = async (req, res) => {
     const quizzes = await Quiz.find({ courseId, createdBy: userId })
       .sort({ chapterIndex: 1, lectureIndex: 1 })
 
-    console.log('✅ Found quizzes:', quizzes.length)
+    console.log('Found quizzes:', quizzes.length)
     console.log('Quiz IDs:', quizzes.map(q => q._id))
 
     res.json({ success: true, quizzes })
   } catch (error) {
-    console.error('❌ Error getting course quizzes:', error)
+    console.error('Error getting course quizzes:', error)
     res.json({ success: false, message: error.message })
   }
 }

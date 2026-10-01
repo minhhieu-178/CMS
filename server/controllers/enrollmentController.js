@@ -66,10 +66,10 @@ export const enrollCourse = async (req, res) => {
                     lastUpdated: new Date()
                 }
             })
-            console.log('✅ Created initial LearningAnalytics for user:', studentId)
+            console.log('Created initial LearningAnalytics for user:', studentId)
         } catch (analyticsError) {
             // If analytics already exists (edge case), just log warning
-            console.log('⚠️ LearningAnalytics may already exist:', analyticsError.message)
+            console.log('LearningAnalytics may already exist:', analyticsError.message)
         }
 
         res.json({ success: true, message: 'Enrolled successfully', enrollment })
@@ -175,11 +175,11 @@ export const getMyEnrollments = async (req, res) => {
 // Migrate existing enrollments to LearningAnalytics (one-time migration)
 export const migrateEnrollmentsToAnalytics = async (req, res) => {
     try {
-        console.log('🔄 Starting enrollment to analytics migration...')
+        console.log('Starting enrollment to analytics migration...')
         
         // Get all enrollments
         const allEnrollments = await Enrollment.find({})
-        console.log(`📚 Found ${allEnrollments.length} total enrollments`)
+        console.log(`Found ${allEnrollments.length} total enrollments`)
         
         let created = 0
         let skipped = 0
@@ -224,15 +224,15 @@ export const migrateEnrollmentsToAnalytics = async (req, res) => {
                 })
                 
                 created++
-                console.log(`✅ Created analytics for user ${enrollment.studentId}, course ${enrollment.courseId}`)
+                console.log(`Created analytics for user ${enrollment.studentId}, course ${enrollment.courseId}`)
                 
             } catch (error) {
                 errors++
-                console.error(`❌ Error processing enrollment ${enrollment._id}:`, error.message)
+                console.error(`Error processing enrollment ${enrollment._id}:`, error.message)
             }
         }
         
-        console.log('✅ Migration complete!')
+        console.log('Migration complete!')
         console.log(`   Created: ${created}`)
         console.log(`   Skipped (already exists): ${skipped}`)
         console.log(`   Errors: ${errors}`)

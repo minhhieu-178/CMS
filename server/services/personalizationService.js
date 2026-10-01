@@ -442,11 +442,11 @@ class PersonalizationService {
         
         // Add to completed if not already there
         const alreadyCompleted = analytics.progress.completedLectures.includes(lectureId);
-        console.log('📝 Already completed?', alreadyCompleted);
+        console.log('Already completed?', alreadyCompleted);
         
         if (!alreadyCompleted) {
           analytics.progress.completedLectures.push(lectureId);
-          console.log('✅ Added lecture to completed list. Total:', analytics.progress.completedLectures.length);
+          console.log('Added lecture to completed list. Total:', analytics.progress.completedLectures.length);
         }
         
         // Update current position
@@ -461,8 +461,8 @@ class PersonalizationService {
           0
         );
         
-        console.log('📊 Total lectures in course:', totalLectures);
-        console.log('📊 Marked completed lectures:', analytics.progress.completedLectures.length);
+        console.log('Total lectures in course:', totalLectures);
+        console.log('Marked completed lectures:', analytics.progress.completedLectures.length);
         
         // Check which lectures actually count toward progress
         // If a lecture has a quiz, it only counts if the quiz is passed
@@ -479,7 +479,7 @@ class PersonalizationService {
           }
         }
         
-        console.log('🎯 Lectures with quizzes:', lectureQuizMap.size);
+        console.log('Lectures with quizzes:', lectureQuizMap.size);
         
         // Count truly completed lectures
         let trulyCompletedCount = 0;
@@ -504,18 +504,18 @@ class PersonalizationService {
             
             if (bestAttempt && bestAttempt.percentage >= passingScore) {
               trulyCompletedCount++;
-              console.log(`   ✅ ${lectureId}: Completed + Quiz Passed (${bestAttempt.percentage}%)`);
+              console.log(`   ${lectureId}: Completed + Quiz Passed (${bestAttempt.percentage}%)`);
             } else {
-              console.log(`   ⚠️  ${lectureId}: Marked complete but quiz not passed yet`);
+              console.log(`   ${lectureId}: Marked complete but quiz not passed yet`);
             }
           } else {
             // No quiz required - just completed is enough
             trulyCompletedCount++;
-            console.log(`   ✅ ${lectureId}: Completed (no quiz)`);
+            console.log(`   ${lectureId}: Completed (no quiz)`);
           }
         }
         
-        console.log('📊 Truly completed lectures (with quiz check):', trulyCompletedCount);
+        console.log('Truly completed lectures (with quiz check):', trulyCompletedCount);
         
         const progressPercentage = totalLectures > 0
           ? Math.round((trulyCompletedCount / totalLectures) * 100)
@@ -523,11 +523,11 @@ class PersonalizationService {
         
         analytics.progress.overallProgress = progressPercentage;
         
-        console.log('📊 Calculated progress:', progressPercentage + '%');
+        console.log('Calculated progress:', progressPercentage + '%');
         
         await analytics.save({ session });
         
-        console.log('💾 Saved analytics to DB');
+        console.log('Saved analytics to DB');
         
         // Also update enrollment completionPercentage to stay in sync
         const Enrollment = (await import('../models/Enrollment.js')).default;
@@ -542,11 +542,11 @@ class PersonalizationService {
           { session, new: true }
         );
         
-        console.log('💾 Updated enrollment:', !!enrollmentUpdate);
+        console.log('Updated enrollment:', !!enrollmentUpdate);
         
         await session.commitTransaction();
         
-        console.log('✅ Transaction committed successfully');
+        console.log('Transaction committed successfully');
         
         return {
           success: true,
